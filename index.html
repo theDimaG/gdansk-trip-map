@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>מפת הטיול לגדנסק</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700&family=Rubik:wght@700;800&display=swap">
+<style>
+:root{
+  --bg:#F2F4F6; --surface:#FFFFFF; --surface-2:#E9EDF1; --line:#D3DAE1;
+  --ink:#172230; --ink-2:#4E5D6C; --ink-3:#7B8894;
+  --amber:#D99A2B; --amber-ink:#8A5D0E; --amber-soft:#FBF1DD;
+  --shadow:0 1px 2px rgba(23,34,48,.06),0 8px 24px rgba(23,34,48,.08);
+  --radius:12px;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    color-scheme:dark;
+    --bg:#111820; --surface:#18222C; --surface-2:#1F2B37; --line:#2E3B48;
+    --ink:#E8EEF3; --ink-2:#AAB7C3; --ink-3:#7D8A96;
+    --amber:#E8B04A; --amber-ink:#F1C97A; --amber-soft:#2C2412;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+  }
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:Heebo,"Segoe UI",Arial,sans-serif;font-size:15px;line-height:1.5;direction:rtl}
+.wrap{max-width:1280px;margin:0 auto;padding-inline:16px;padding-block:20px 48px;display:flex;flex-direction:column;gap:18px}
+h1,h2{font-family:Rubik,Heebo,Arial,sans-serif;text-wrap:balance;margin:0}
+h1{font-size:clamp(26px,4vw,38px);font-weight:800;letter-spacing:-.01em}
+h2{font-size:17px;font-weight:700}
+.sub{color:var(--ink-2);margin:4px 0 0;max-width:60ch}
+header{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end;justify-content:space-between}
+.stats{display:flex;gap:10px;flex-wrap:wrap}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px 14px;min-width:96px}
+.stat b{display:block;font-family:Rubik,Heebo,sans-serif;font-size:22px;font-variant-numeric:tabular-nums;line-height:1.1}
+.stat span{font-size:12px;color:var(--ink-3);letter-spacing:.04em}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px}
+.controls{display:flex;flex-direction:column;gap:12px}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.row .lbl{font-size:12px;color:var(--ink-3);letter-spacing:.05em;min-width:64px}
+.chip{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:5px 12px;font:inherit;font-size:14px;cursor:pointer;display:inline-flex;align-items:center;gap:7px;transition:background .15s,border-color .15s}
+.chip:hover{border-color:var(--ink-3)}
+.chip:focus-visible,input:focus-visible,.card:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+.chip .dot{width:10px;height:10px;border-radius:50%;background:var(--c,var(--ink-3));flex:none}
+.chip .n{color:var(--ink-3);font-variant-numeric:tabular-nums;font-size:12px}
+.chip.off{opacity:.45}
+.chip.lst.on{background:var(--c);border-color:var(--c);color:#fff}
+.chip.lst.on .n{color:rgba(255,255,255,.8)}
+.chip.lst.on .dot{background:#fff}
+.chip.tag.on{background:var(--amber-soft);border-color:var(--amber);color:var(--amber-ink)}
+.chip.area.on{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+input[type=search]{font:inherit;padding:7px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);min-width:220px;flex:1;max-width:420px}
+.link{background:none;border:none;color:var(--ink-2);text-decoration:underline;cursor:pointer;font:inherit;font-size:13px;padding:0}
+
+.main{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:860px){.main{grid-template-columns:1fr}}
+.mapbox{position:sticky;top:12px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow)}
+@media (max-width:860px){.mapbox{position:static}}
+.map-head{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line)}
+.map-head h2{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.map-head span{font-size:13px;color:var(--ink-3);white-space:nowrap}
+#map{width:100%;height:560px;background:var(--surface-2)}
+@media (max-width:860px){#map{height:60vh;min-height:360px}}
+.gm-note{font-size:12px;color:var(--ink-3);padding:8px 14px;border-top:1px solid var(--line)}
+
+.list{display:flex;flex-direction:column;gap:8px;max-height:640px;overflow-y:auto;padding-inline-start:2px}
+@media (max-width:860px){.list{max-height:none}}
+.card{display:grid;grid-template-columns:6px 1fr auto;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px 10px 10px;cursor:pointer;transition:border-color .15s,background .15s}
+.card:hover{border-color:var(--ink-3)}
+.card.sel{border-color:var(--amber);background:var(--amber-soft)}
+.card .bar{border-radius:3px;background:var(--c)}
+.card .name{font-weight:700;font-size:15px}
+.card .meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;font-size:12px;color:var(--ink-3)}
+.card .meta .t{background:var(--surface-2);border-radius:6px;padding:1px 7px;color:var(--ink-2)}
+.card .note{margin-top:6px;color:var(--ink-2);font-size:14px}
+.card .note.empty{color:var(--ink-3);font-style:italic}
+.card .go{align-self:start;color:var(--amber-ink);font-size:13px;text-decoration:none;white-space:nowrap;padding:4px 8px;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+.card .go:hover{border-color:var(--amber)}
+.empty{padding:32px;text-align:center;color:var(--ink-3)}
+
+.summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}
+.bars{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+.b{display:grid;grid-template-columns:130px 1fr 32px;gap:8px;align-items:center;font-size:13px}
+.b .track{height:10px;background:var(--surface-2);border-radius:5px;overflow:hidden}
+.b .fill{height:100%;background:var(--c,var(--amber));border-radius:5px}
+.b .v{text-align:left;font-variant-numeric:tabular-nums;color:var(--ink-2)}
+footer{font-size:12px;color:var(--ink-3)}
+
+/* info window (Google injects light DOM; keep it readable) */
+.iw{font-family:Heebo,sans-serif;direction:rtl;text-align:right;max-width:260px;color:#172230}
+.iw b{display:block;font-size:15px;margin-bottom:2px}
+.iw .m{font-size:12px;color:#7B8894;margin-bottom:6px}
+.iw p{margin:0 0 8px;font-size:13px;line-height:1.45}
+.iw a{color:#8A5D0E;font-size:13px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>מפת הטיול לגדנסק</h1>
+      <p class="sub">כל מה ששמרת בגוגל מפות לטיול: גדנסק והסביבה, מלבורק, ברודניצה וטורון. ההערות שלך צמודות לכל מקום.</p>
+    </div>
+    <div class="stats" id="stats"></div>
+  </header>
+
+  <section class="panel controls">
+    <div class="row"><span class="lbl">רשימות</span><div class="row" id="listChips"></div></div>
+    <div class="row"><span class="lbl">אזור</span><div class="row" id="areaChips"></div></div>
+    <div class="row"><span class="lbl">תגיות</span><div class="row" id="tagChips"></div></div>
+    <div class="row">
+      <span class="lbl">חיפוש</span>
+      <input type="search" id="q" placeholder="שם מקום או מילה מההערה (למשל: פירוגי, מקורה, סופוט)">
+      <button class="link" id="reset">נקה סינון</button>
+    </div>
+  </section>
+
+  <div class="main">
+    <div class="mapbox">
+      <div class="map-head"><h2 id="mapTitle">כל האזורים</h2><span id="mapCount"></span><button class="chip" id="zoomOut" hidden>הצג הכול</button></div>
+      <div id="map"></div>
+      <div class="gm-note">לחיצה על מקום (בנקודה או בכרטיס) מקרבת אליו ופותחת את ההערה. גרירה וזום חופשיים במפה.</div>
+    </div>
+    <div><div class="list" id="list"></div></div>
+  </div>
+
+  <section class="summary" id="summary"></section>
+  <footer>נתונים חולצו מהרשימות השמורות בגוגל מפות ב-26.9.2026. "פתח במפות" פותח את המקום באפליקציית גוגל מפות.</footer>
+</div>
+
+<script>
+const DATA = {"lists": [{"id": "43qJlm6mTAl_r32b6PZmVA", "title": "גדנסק – אוכל", "short": "אוכל", "color": "#D95F43", "n": 21}, {"id": "bLcg6adUlFP_Ot63xNhHew", "title": "גדנסק – אטרקציות לילדים", "short": "ילדים", "color": "#2A9D8F", "n": 10}, {"id": "EpQjuKo4WKQCxgTSBmwk_w", "title": "גדנסק – אטרקציות והיסטוריה", "short": "היסטוריה וטבע", "color": "#35597A", "n": 14}, {"id": "QdkTcFXEqlYmoxnc85FqXQ", "title": "גדנסק – קניות", "short": "קניות", "color": "#8E6BB0", "n": 5}, {"id": "g4OXw5esrzIdJLh8xORURA", "title": "ברודניצה – עצירה בדרך", "short": "ברודניצה", "color": "#5B8C3A", "n": 12}, {"id": "loMCaW6GWwggNc-KlplxSA", "title": "טורון – יום טיול", "short": "טורון", "color": "#A0522D", "n": 7}], "places": [{"list": "43qJlm6mTAl_r32b6PZmVA", "name": "Pierogi Lwowskie", "note": "פירוגי", "lat": 54.374448, "lng": 18.612969, "area": "אוליבה / ורז'שץ'", "tags": [], "cid": "7496163244996503792"}, {"list": "43qJlm6mTAl_r32b6PZmVA", "name": "Bistro Le Delice – breakfast, brunch, lunch, artisan bakery & desserts", "note": "ארוחת בוקר בית קפה", "lat": 54.352746, "lng": 18.646197, "area": "העיר העתיקה גדנסק", "tags": [], "cid": "413797571402772997"}, {"list": "43qJlm6mTAl_r32b6PZmVA", "name": "Pierogarnia Mandu Gdańsk Śródmieście", "note": "פירוגי", "lat": 54.353757, "lng": 18.646767, "area": "העיר העתיקה גדנסק", "tags": [], "cid": "2805311863089755088"}, {"list": "43qJlm6mTAl_r32b6PZmVA", "name": "Market Hall", "note": "שוק אוכל", "lat": 54.352757, "lng": 18.651997, "area": "העיר העתיקה גדנסק", "tags": [], "cid": "980679946812545984"}, {"list": "43qJlm6mTAl_r32b6PZmVA", "name": "AMITORAMEN", "note": "ראמן (פולינה). ברחוב Chmielna, מדרום לעיר העתיקה", "lat": 54.343617, "lng": 18.654754, "area": "העיר העתיקה גדנסק", "tags": ["פולינה"], "cid": "1820737780594751996"}, {"list": "43qJlm6mTAl_r32b6PZmVA", "name": "Balans Coffee Speciality & Breakfast & Brunch", "note": "ארוחת בוקר (פולינה). ברחוב Ogarna בעיר העתיקה, כמעט ליד Pomelo", "lat": 54.348639, "lng": 18.649001, "area": "העיר העתיקה גדנסק", "tags": ["פולינה"], "cid": "12582450434000321007"}, {"list": "43qJlm6mTAl_r32b6PZmVA", "name": "Kawiarnia Drukarnia", "note": "קפה ועוגה (פולינה). על רחוב Mariacka בעיר העתיקה", "lat": 54.349638, "lng": 18.655968, "area": "העיר העתיקה גדנסק", "tags": ["פולינה"], "cid": "8402596238391599458"}, {"list": "43qJlm6mTAl_r32b6PZmVA", "name": "Caffeino", "note": "בית קפה ארוחת בוקר (פולינה). מעט מערבית לעיר העתיקה, ליד Hevelianum", "lat": 54.354382, "lng": 18.632083, "area": "העיר העתיקה גדנסק", "tags": ["פולינה"], "cid": "18336652543928083515"}, {"list": "43qJlm6mTAl_r32b6PZmVA", "name": "Chleb i Wino Stągiewna Gdańsk Restauracja", "note": "מסעדה וארוחת בוקר (פולינה). על האי מול העיר העתיקה (Stągiewna)", "lat": 54.347299, "lng": 18.65905, "area": "העיר העתיקה גדנסק", "tags": ["פולינה"], "cid": "15524677010252817046"}, {"list": "43qJlm6mTAl_r32b6PZmVA", "name": "Norwida 2 concept | śniadanie I delikatesy", "note": "ארוחת בוקר עם דרוג גבוה (פולינה). בשכונת Wrzeszcz, ליד Gusto Italia", "lat": 54.384015, "lng": 18.59237, "area": "אוליבה / ורז'שץ'", "tags": ["פולינה"], "cid": "1963001205455870898"}, {"list": "43qJlm6mTAl_r32b6PZmVA", "name": "Włoskie delikatesy Gusto Italia Gdańsk", "note": "מעדניה איטלקית (פולינה). בשכונת Wrzeszcz, לא בעיר העתיקה", "lat": 54.382556, "lng": 18.591079, "area": "אוליבה / ורז'שץ'", "tags": ["פולינה"], "cid": "4264201699106670497"}, {"list": "43qJlm6mTAl_r32b6PZmVA", "name": "Lookier Cafe Restauracja Śniadania Lunche Catering Gdańsk", "note": "ארוחת בוקר (פולינה). ברחוב Długa בעיר העתיקה", "lat": 54.348653, "lng": 18.652185, "area": "העיר העתיקה גדנסק", "tags": ["פולינה"], "cid": "14327420698976488874"}, {"list": "43qJlm6mTAl_r32b6PZmVA", "name": "Billy's American Restaurant", "note": "אמריקאי מושחת (פולינה). סניף Billy's בסופוט, ליד המזח – לשלב ביום סופוט", "lat": 54.445346, "lng": 18.569619, "area": "סופוט", "tags": ["פולינה"], "cid": "10198421877826396594"}, {"list": "43qJlm6mTAl_r32b6PZmVA", "name": "Pasta Miasta", "note": "פסטה ואיטלקי. בגדיניה, רח' Świętojańska. 4.7 עם 7K ביקורות, 40–60 זלוטי, עד 23:00. מתאים לארוחה ביום גדיניה", "lat": 54.516984, "lng": 18.541238, "area": "גדיניה", "tags": [], "cid": "13347185610219300383"}, {"list": "43qJlm6mTAl_r32b6PZmVA", "name": "Pomelo Gdańsk", "note": "מסעדה, ארוחת בוקר, טרטר ועוד. בעיר העתיקה, 4.6, 40–80 זלוטי. נחשבת לארוחת הבוקר הכי טובה בגדנסק (בנדיקט, פנקייקס), מוגשת עד 13:00. פתוח עד 22:00. בשבת בבוקר מלא כבר ב-9 – להזמין מקום", "lat": 54.348617, "lng": 18.64909, "area": "העיר העתיקה גדנסק", "tags": ["להזמין מראש"], "cid": "16614199861093839825"}, {"list": "43qJlm6mTAl_r32b6PZmVA", "name": "Pierogarnia Stary Młyn - Restauracja Gdańsk - Śniadania", "note": "פירוגי. בעיר העתיקה, 4.6, ~40–120 זלוטי. פירוגי מלוחים ומתוקים, ז'ור, ביגוס, ארוחות בוקר. המתנה ארוכה כשעמוס – להזמין שולחן", "lat": 54.35019, "lng": 18.654625, "area": "העיר העתיקה גדנסק", "tags": ["להזמין מראש"], "cid": "14816297200683231501"}, {"list": "43qJlm6mTAl_r32b6PZmVA", "name": "Restauracja Dominikańska", "note": "מסעדה פולנית (אופציה). בעיר העתיקה, 4.6, ~40–60 זלוטי. ז'ורק, פירוגי. עד 22:00. מתאים למשפחה", "lat": 54.349224, "lng": 18.648262, "area": "העיר העתיקה גדנסק", "tags": ["לילדים"], "cid": "11129430090282917143"}, {"list": "43qJlm6mTAl_r32b6PZmVA", "name": "Billy's American Restaurants Chmielna", "note": "המבורגר נראה וואו. 4.9 עם 17K ביקורות. מול הנהר, ~40–160 זלוטי, עד 2:00. להזמין שולחן. מצוין לילדים", "lat": 54.349309, "lng": 18.657831, "area": "העיר העתיקה גדנסק", "tags": ["להזמין מראש", "לילדים"], "cid": "6312466370676435959"}, {"list": "43qJlm6mTAl_r32b6PZmVA", "name": "OSTRO. Pizza Napoletana", "note": "איטלקית, בעיקר פיצות. פיצה נפוליטנית על הטיילת ליד הנהר, 4.6, ~40–60 זלוטי, עד 23:00. תורים בערב – לבוא מוקדם, לבקש שולחן מאחורה", "lat": 54.349643, "lng": 18.656931, "area": "העיר העתיקה גדנסק", "tags": [], "cid": "6089860028557228208"}, {"list": "43qJlm6mTAl_r32b6PZmVA", "name": "La Muerte Mexican Cocktail Bar", "note": "מסעדה מקסיקנית. בא לי!! (פולינה). על רחוב Mariacka – בעצם בר קוקטיילים עם טאקו ונאצ'וס. 4.6, עד 1:00. אלטרנטיבה מסעדה: La Catrina", "lat": 54.349712, "lng": 18.653991, "area": "העיר העתיקה גדנסק", "tags": ["פולינה"], "cid": "17965126679426132649"}, {"list": "43qJlm6mTAl_r32b6PZmVA", "name": "Pierogarnia Mandu Gdańsk Oliwa", "note": "פירוגי מטורפים! באוליבה (ליד הגן חיות ופארק אוליבה). 4.7 עם ~10K ביקורות. ~40–60 זלוטי לאדם. פתוח עד 22:00. יש גם סניף בעיר העתיקה (Mandu Centrum). כדאי להזמין מקום – עמוס", "lat": 54.409074, "lng": 18.566983, "area": "אוליבה / ורז'שץ'", "tags": ["להזמין מראש"], "cid": "12922603819156659779"}, {"list": "bLcg6adUlFP_Ot63xNhHew", "name": "Aquapark Reda", "note": "פארק מים", "lat": 54.594814, "lng": 18.366303, "area": "רדה", "tags": [], "cid": "16207989158615781999"}, {"list": "bLcg6adUlFP_Ot63xNhHew", "name": "Aquapark Sopot", "note": "פארק מים מקורה בסופוט. ~63 ש\"ח, עד 22:00. טוב לגשם, אבל דירוג 3.9 – תלונות על עומס ותחזוקה. לבוא בבוקר ביום חול", "lat": 54.45995, "lng": 18.557175, "area": "סופוט", "tags": ["טוב לגשם"], "cid": "15140196091383344650"}, {"list": "bLcg6adUlFP_Ot63xNhHew", "name": "DeJa Vu Muzeum", "note": "מוזיאון האשליות. 4.6, ~39 ש\"ח, מקורה – טוב לגשם. ליד העיר העתיקה. פתיחה 10:00", "lat": 54.347283, "lng": 18.663369, "area": "העיר העתיקה גדנסק", "tags": ["טוב לגשם"], "cid": "15977394951352501713"}, {"list": "bLcg6adUlFP_Ot63xNhHew", "name": "ZOO GDAŃSK", "note": "גן חיות. באוליבה, ביער – גדול מאוד, הרבה הליכה (4–6 שעות), יש רכבת פנימית. פתוח כל יום מ-9:00. כרטיס ~36 ש\"ח. פתוח – לא ליום גשום. חניה במקום", "lat": 54.412956, "lng": 18.534556, "area": "אוליבה / ורז'שץ'", "tags": [], "cid": "11868276907524553070"}, {"list": "bLcg6adUlFP_Ot63xNhHew", "name": "mini zoo Papugarnia Gdańsk", "note": "גן חיות קטן ממש חמוד עם האכלת תוכי וקפיברה. מקורה – טוב לגשם. גם לאמות, סוריקטות, למורים. פתיחה 10:30. כרטיס ~40 ש\"ח. טיפ: לתת לתוכים לבוא לבד, לא לתפוס – נושכים", "lat": 54.388609, "lng": 18.653337, "area": "אזור גדנסק (אחר)", "tags": ["טוב לגשם"], "cid": "16039235790870804418"}, {"list": "bLcg6adUlFP_Ot63xNhHew", "name": "Majaland Gdańsk", "note": "פארק שעשועים (הדבורה מאיה, דרדסים, בובספוג). מכוון לקטנים – ל-9 מתאים, ל-11 גבולי (2 רכבות הרים משפחתיות + פארק מים). רוב המתקנים מקורים – טוב לגשם. 10:00–18:00 כל יום, ~80 זלוטי לאדם, אוכל בפנים יקר. ~30 דק' נסיעה", "lat": 54.411081, "lng": 18.478157, "area": "אזור גדנסק (אחר)", "tags": ["טוב לגשם"], "cid": "4426589597248264950"}, {"list": "bLcg6adUlFP_Ot63xNhHew", "name": "Gdynia Aquarium", "note": "מצפה תת ימי, נראה ממש חמוד. אקווריום בגדיניה על המזח הדרומי – קטן-בינוני (1–2 שעות), מקורה, טוב לגשם. ~38 ש\"ח. פתיחה 9:00. לשלב ביום גדיניה עם מוזיאון הצי ופארק החבלים", "lat": 54.518436, "lng": 18.557821, "area": "גדיניה", "tags": ["טוב לגשם"], "cid": "13396136353003987235"}, {"list": "bLcg6adUlFP_Ot63xNhHew", "name": "AmberSky", "note": "גלגל ענק. על האי Ołowianka מול העיר העתיקה. תאים סגורים וממוזגים – אפשר גם בגשם. 3 סיבובים, מקום לכל המשפחה בתא. פתוח עד חצות – יפה בערב עם התאורה", "lat": 54.352769, "lng": 18.661627, "area": "העיר העתיקה גדנסק", "tags": ["טוב לגשם", "לילדים"], "cid": "518447040129728895"}, {"list": "bLcg6adUlFP_Ot63xNhHew", "name": "Hevelianum", "note": "מרכז מדע אינטראקטיבי במבצר על גבעה ליד תחנת הרכבת. טוב לגשם. ב'–שבת 10:00–18:00, ראשון סגור! כרטיסים מראש באתר. חניה 8 זלוטי/שעה. הנחה 10% במסעדת Gradova עם כרטיס", "lat": 54.356543, "lng": 18.638962, "area": "העיר העתיקה גדנסק", "tags": ["טוב לגשם", "להזמין מראש"], "cid": "17101326609778368969"}, {"list": "bLcg6adUlFP_Ot63xNhHew", "name": "Park Linowy Góra Harców", "note": "פארק שעשועים עם חבלים", "lat": 54.506696, "lng": 18.554389, "area": "גדיניה", "tags": [], "cid": "12830496706196202"}, {"list": "EpQjuKo4WKQCxgTSBmwk_w", "name": "Oliwski Park", "note": "פארק. גן יפהפה ליד קתדרלת אוליבה, חינם, עד 23:00. לשלב עם גן החיות ופירוגי Mandu אוליבה", "lat": 54.411221, "lng": 18.562081, "area": "אוליבה / ורז'שץ'", "tags": ["חינם / פתוח תמיד"], "cid": "504887311590619203"}, {"list": "EpQjuKo4WKQCxgTSBmwk_w", "name": "Jelitkowo Beach", "note": "חוף ים. החוף הצפוני של גדנסק, טיילת אופניים עד מזח סופוט (~3 ק\"מ). חינם. בסוף ספטמבר המים קרים – יותר לטיול", "lat": 54.427215, "lng": 18.595902, "area": "סופוט", "tags": ["חינם / פתוח תמיד"], "cid": "11804971999538065839"}, {"list": "EpQjuKo4WKQCxgTSBmwk_w", "name": "Pier in Sopot", "note": "מזח. מזח העץ הארוך באירופה (~500 מ'). כניסה בתשלום בעונה, שקיעה יפה. לשלב ביום סופוט", "lat": 54.446506, "lng": 18.572047, "area": "סופוט", "tags": [], "cid": "4034062259410898704"}, {"list": "EpQjuKo4WKQCxgTSBmwk_w", "name": "Northern Park", "note": "פארק שמורת טבע. יער מול החוף בסופוט, שבילי הליכה. חינם, 24/7. לשלב ביום סופוט (~20 דק' רכבת SKM). לא ליום גשום", "lat": 54.455551, "lng": 18.561796, "area": "סופוט", "tags": ["חינם / פתוח תמיד"], "cid": "15795057979776367443"}, {"list": "EpQjuKo4WKQCxgTSBmwk_w", "name": "Trójmiejski Park Krajobrazowy", "note": "שמורת טבע. פארק הנוף של אזור גדנסק–סופוט–גדיניה, יערות ושבילי הליכה על הגבעות. לא ליום גשום", "lat": 54.364896, "lng": 18.540217, "area": "אוליבה / ורז'שץ'", "tags": [], "cid": "9935048571860759595"}, {"list": "EpQjuKo4WKQCxgTSBmwk_w", "name": "מלבורק", "note": "מלבורק – העיר של הטירה, ~60 ק\"מ מגדנסק (~45 דק' רכבת/רכב). לשלב עם הטירה ומגדל Maślankowa", "lat": 54.036132, "lng": 19.037976, "area": "מלבורק", "tags": [], "cid": "11072557435169063204"}, {"list": "EpQjuKo4WKQCxgTSBmwk_w", "name": "Wieża Maślankowa", "note": "סוג של מבצר יפה. מגדל מימי הביניים במלבורק, ליד הטירה – לשלב ביום מלבורק", "lat": 54.043202, "lng": 19.031204, "area": "מלבורק", "tags": [], "cid": "9492745842995518196"}, {"list": "EpQjuKo4WKQCxgTSBmwk_w", "name": "Kolejka górska do punktu widokowego", "note": "רכבל. פוניקולר קטן לתצפית Kamienna Góra בגדיניה – נוף על הנמל. לשלב ביום גדיניה", "lat": 54.51648, "lng": 18.543323, "area": "גדיניה", "tags": [], "cid": "14537307937366941893"}, {"list": "EpQjuKo4WKQCxgTSBmwk_w", "name": "Museum of the Second World War", "note": "ללכת? מוזיאון מעולה (4.8, ~26 ש\"ח) אבל התערוכה הראשית קשה וגרפית, בד\"כ מומלץ מ-12. לבדוק באתר אם יש אזור לילדים. להקציב 3+ שעות", "lat": 54.356079, "lng": 18.659993, "area": "העיר העתיקה גדנסק", "tags": ["לילדים"], "cid": "11580095723276221152"}, {"list": "EpQjuKo4WKQCxgTSBmwk_w", "name": "Long Market", "note": "הכיכר המרכזית של העיר העתיקה – מזרקת נפטון, בית ארטוס, בתים צבעוניים. 24/7", "lat": 54.348327, "lng": 18.654042, "area": "העיר העתיקה גדנסק", "tags": ["חינם / פתוח תמיד"], "cid": "6588251379556438191"}, {"list": "EpQjuKo4WKQCxgTSBmwk_w", "name": "Długa", "note": "רחוב. הרחוב הראשי של העיר העתיקה (\"הדרך המלכותית\"), בתים צבעוניים, בית העירייה עם מגדל תצפית. יפה במיוחד בערב", "lat": 54.349214, "lng": 18.650268, "area": "העיר העתיקה גדנסק", "tags": [], "cid": "5996608437354441263"}, {"list": "EpQjuKo4WKQCxgTSBmwk_w", "name": "Monument to Displaced Gdynians", "note": "אתר הנצחה. אנדרטת תושבי גדיניה שגורשו ב-1939, ליד תחנת הרכבת. עצירה קצרה, פתוח 24/7", "lat": 54.521016, "lng": 18.532331, "area": "גדיניה", "tags": ["חינם / פתוח תמיד"], "cid": "519338343899972625"}, {"list": "EpQjuKo4WKQCxgTSBmwk_w", "name": "Muzeum Marynarki Wojennej w Gdyni", "note": "מוזאון ימי. מוזיאון הצי הפולני בגדיניה – הרבה מוצגים בחוץ (תותחים, מטוסים, ספינות). לשלב ביום גדיניה עם פארק החבלים והאקווריום", "lat": 54.515768, "lng": 18.54824, "area": "גדיניה", "tags": [], "cid": "3974112022118722361"}, {"list": "EpQjuKo4WKQCxgTSBmwk_w", "name": "טירת מאלבורק", "note": "סוג של מבצר יפה. טירת מלבורק – הטירה הגדולה בעולם בשטח, UNESCO, המסדר הטבטוני. ~60 ק\"מ מגדנסק (~45 דק' רכבת/רכב). יום שלם – להקציב 3–4 שעות בפנים. רוב הסיור מקורה – מתאים גם לגשם. כרטיסים מראש באתר (מדריך אודיו כלול). נוף הכי יפה מהגדה השנייה של הנהר (גשר הולכי רגל). הקישור המקורי היה למגדל החמאה שבמתחם (לא נכנסים אליו)", "lat": 54.039753, "lng": 19.028013, "area": "מלבורק", "tags": ["טוב לגשם", "להזמין מראש"], "cid": "8467862362598899350"}, {"list": "QdkTcFXEqlYmoxnc85FqXQ", "name": "Lidl", "note": "", "lat": 54.347292, "lng": 18.670184, "area": "העיר העתיקה גדנסק", "tags": [], "cid": "2820915512637633865"}, {"list": "QdkTcFXEqlYmoxnc85FqXQ", "name": "Galeria Madison", "note": "", "lat": 54.356478, "lng": 18.648397, "area": "העיר העתיקה גדנסק", "tags": [], "cid": "9223027062342415935"}, {"list": "QdkTcFXEqlYmoxnc85FqXQ", "name": "Forum Gdańsk", "note": "קניון ליד העיר העתיקה ותחנת הרכבת. עד 21:00. בפולין רוב החנויות סגורות ברוב ימי ראשון. טוב ליום גשום", "lat": 54.349425, "lng": 18.643409, "area": "העיר העתיקה גדנסק", "tags": [], "cid": "15382537729372209312"}, {"list": "QdkTcFXEqlYmoxnc85FqXQ", "name": "Sephora", "note": "", "lat": 54.349426, "lng": 18.644798, "area": "העיר העתיקה גדנסק", "tags": [], "cid": "8072135081348737631"}, {"list": "QdkTcFXEqlYmoxnc85FqXQ", "name": "Sephora", "note": "", "lat": 54.382202, "lng": 18.600187, "area": "אוליבה / ורז'שץ'", "tags": [], "cid": "13095420386630818551"}, {"list": "g4OXw5esrzIdJLh8xORURA", "name": "Restauracja Browar Nowomiejski Brodnica", "note": "מבשלת – אוכל מקומי ובירות אזוריות. במרכז, ליד המוזיאון", "lat": 53.255669, "lng": 19.400687, "area": "ברודניצה", "tags": [], "cid": "758175346788077976"}, {"list": "g4OXw5esrzIdJLh8xORURA", "name": "Restauracja Stacja Tama Domowe Smaki", "note": "אוכל פולני ביתי ומסורתי. לא במרכז – ~5 ק\"מ צפונית-מזרחית לעיר (Tama Brodzka), צריך רכב", "lat": 53.280164, "lng": 19.466548, "area": "ברודניצה", "tags": [], "cid": "13449755169144001180"}, {"list": "g4OXw5esrzIdJLh8xORURA", "name": "Restauracja Bosca pizza włoska", "note": "פיצות איטלקיות מצוינות. ליד המוזיאון (האסם)", "lat": 53.255877, "lng": 19.401574, "area": "ברודניצה", "tags": [], "cid": "3329318712917714133"}, {"list": "g4OXw5esrzIdJLh8xORURA", "name": "Starówka", "note": "מסעדה נעימה במרכז העיר, על כיכר השוק (Duży Rynek)", "lat": 53.255936, "lng": 19.402514, "area": "ברודניצה", "tags": [], "cid": "17183148645578199203"}, {"list": "g4OXw5esrzIdJLh8xORURA", "name": "Rezerwat Rzeka Drwęca", "note": "שמורת נהר דרוונצה. שמורת טבע לאורך הנהר, פופולרית לשיט קיאקים. (הנעץ במפה קרוב ל-Golub-Dobrzyń; הנהר עובר גם בברודניצה)", "lat": 53.09213, "lng": 19.008924, "area": "אזור גדנסק (אחר)", "tags": [], "cid": "52474944722999334"}, {"list": "g4OXw5esrzIdJLh8xORURA", "name": "Brodnicki Park Krajobrazowy", "note": "פארק הנוף של ברודניצה. יערות, אגמים ושבילי הליכה – מהאזורים היפים בצפון פולין. (הנעץ במפה הוא מרכז הפארק ב-Grzmięca, ~10 ק\"מ מהעיר)", "lat": 53.339804, "lng": 19.431072, "area": "ברודניצה", "tags": [], "cid": "136070115153745894"}, {"list": "g4OXw5esrzIdJLh8xORURA", "name": "Spichlerz - Muzeum w Brodnicy", "note": "המוזיאון בברודניצה (הבניין הראשי – האסם). היסטוריה של העיר, ממצאים ארכאולוגיים ותערוכות מימי הביניים", "lat": 53.256037, "lng": 19.400862, "area": "ברודניצה", "tags": [], "cid": "14584315404429531286"}, {"list": "g4OXw5esrzIdJLh8xORURA", "name": "Trójkątny Rynek", "note": "כיכר השוק (Duży Rynek). הכיכר ההיסטורית של העיר, בצורת משולש ייחודית, מוקפת בתים צבעוניים ובתי קפה. 24/7", "lat": 53.255798, "lng": 19.402931, "area": "ברודניצה", "tags": ["חינם / פתוח תמיד"], "cid": "13546476040823342701"}, {"list": "g4OXw5esrzIdJLh8xORURA", "name": "Anna Vasa Palace in Brodnica", "note": "ארמון אנה ואסה. מבנה היסטורי הקשור לנסיכה אנה ואסה שגרה בעיר בתחילת המאה ה-17. צמוד לטירה", "lat": 53.258139, "lng": 19.400272, "area": "ברודניצה", "tags": [], "cid": "12302300645676576947"}, {"list": "g4OXw5esrzIdJLh8xORURA", "name": "Brama Chełmińska - Muzeum w Brodnicy", "note": "שער חלמנו. השער היחיד שנותר מחומות העיר העתיקה ואחד מסמלי ברודניצה. משמש כשלוחה של מוזיאון העיר", "lat": 53.257406, "lng": 19.402803, "area": "ברודניצה", "tags": [], "cid": "14512247248409832495"}, {"list": "g4OXw5esrzIdJLh8xORURA", "name": "Zamek krzyżacki w Brodnicy", "note": "הטירה הטבטונית. שרידי טירה מהמאה ה-14 של האבירים הטבטונים. מהמגדל נוף יפה של העיר והאזור", "lat": 53.257957, "lng": 19.398803, "area": "ברודניצה", "tags": [], "cid": "6443805203132192765"}, {"list": "g4OXw5esrzIdJLh8xORURA", "name": "Brodnica", "note": "עיר קטנה ואותנטית מחוץ למסלולי התיירות, בלב אזור האגמים Pojezierze Brodnickie. ~100 ק\"מ מטורון, ~180 ק\"מ מגדנסק. עצירה טובה בין ורשה לגדנסק. כמה שעות לעיר העתיקה; לחובבי טבע (אגמים, קיאקים, אופניים) לילה–שניים", "lat": 53.25997, "lng": 19.395662, "area": "ברודניצה", "tags": [], "cid": "5523818441766342300"}, {"list": "loMCaW6GWwggNc-KlplxSA", "name": "NAPAR", "note": "בית קפה וקינוחים (פולינה). בעיר העתיקה של טורון", "lat": 53.011634, "lng": 18.605925, "area": "טורון", "tags": ["פולינה"], "cid": "11110590672149069251"}, {"list": "loMCaW6GWwggNc-KlplxSA", "name": "Restauracja Luizjana Toruń", "note": "מסעדה אמריקאית עם צלעות, טרטר ועוד. על כיכר השוק הישנה, 4.7, 40–120 זלוטי, עד 23:00", "lat": 53.010012, "lng": 18.604487, "area": "טורון", "tags": [], "cid": "2116183735987353848"}, {"list": "loMCaW6GWwggNc-KlplxSA", "name": "Neko Cafe - ul. Chełmińska Kocia Kawiarnia", "note": "בית קפה חתולים וקינוחים. 4.7, עד 21:00", "lat": 53.011641, "lng": 18.603994, "area": "טורון", "tags": [], "cid": "1283528044855294450"}, {"list": "loMCaW6GWwggNc-KlplxSA", "name": "Planetarium. W. Dziewulskiego", "note": "פלנטריום. ~24 ש\"ח. לבדוק מראש שעות הקרנה ושפה (רוב ההקרנות בפולנית)", "lat": 53.011418, "lng": 18.602542, "area": "טורון", "tags": [], "cid": "13843288833772984608"}, {"list": "loMCaW6GWwggNc-KlplxSA", "name": "Mostowa Gate", "note": "סוג של מבצר. שער חומה עתיק מול הנהר, 24/7, עצירה לתמונות", "lat": 53.008636, "lng": 18.608893, "area": "טורון", "tags": ["חינם / פתוח תמיד"], "cid": "1164415309648688635"}, {"list": "loMCaW6GWwggNc-KlplxSA", "name": "Teutonic Castle ruins", "note": "טירה. חורבות טירה מהמאה ה-13, ~17 ש\"ח, ביקור קצר", "lat": 53.009332, "lng": 18.610747, "area": "טורון", "tags": [], "cid": "8102949990345577925"}, {"list": "loMCaW6GWwggNc-KlplxSA", "name": "Muzeum Piernika", "note": "מוזאון וסדנת עוגיות ג'ינג'ר. 4.8, ~33 ש\"ח. הילדים אופים עוגיות בעצמן – להזמין סדנה מראש באתר", "lat": 53.008692, "lng": 18.60485, "area": "טורון", "tags": ["להזמין מראש", "לילדים"], "cid": "13980822452107146021"}]};
+const LISTS = Object.fromEntries(DATA.lists.map(l => [l.id, l]));
+const P = DATA.places.map((p, i) => ({...p, i}));
+const AREAS_ORDER = ["העיר העתיקה גדנסק","אוליבה / ורז'שץ'","סופוט","גדיניה","רדה","אזור גדנסק (אחר)","מלבורק","ברודניצה","טורון"];
+const TAGS = ["טוב לגשם","לא לגשם","להזמין מראש","לילדים","פולינה","חינם / פתוח תמיד"];
+const state = {lists: new Set(), area: null, tags: new Set(), q: "", sel: null};
+const $ = s => document.querySelector(s);
+const esc = s => s.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const mapsUrl = p => p.cid ? `https://www.google.com/maps?cid=${p.cid}` : `https://www.google.com/maps/search/?api=1&query=${p.lat},${p.lng}`;
+
+function filtered() {
+  const q = state.q.trim().toLowerCase();
+  return P.filter(p => (state.lists.size===0 || state.lists.has(p.list))
+    && (!state.area || p.area === state.area)
+    && [...state.tags].every(t => p.tags.includes(t))
+    && (!q || p.name.toLowerCase().includes(q) || p.note.toLowerCase().includes(q) || p.area.includes(q)));
+}
+function renderChips() {
+  $('#listChips').innerHTML = DATA.lists.map(l =>
+    `<button class="chip lst ${state.lists.has(l.id)?'on':(state.lists.size?'off':'')}" data-list="${l.id}" style="--c:${l.color}"><span class="dot"></span>${l.title}<span class="n">${l.n}</span></button>`).join('');
+  const counts = {}; P.forEach(p => counts[p.area] = (counts[p.area]||0)+1);
+  $('#areaChips').innerHTML = `<button class="chip area ${state.area?'':'on'}" data-area="">הכול</button>` +
+    AREAS_ORDER.filter(a => counts[a]).map(a => `<button class="chip area ${state.area===a?'on':''}" data-area="${a}">${a}<span class="n">${counts[a]}</span></button>`).join('');
+  const tc = {}; P.forEach(p => p.tags.forEach(t => tc[t]=(tc[t]||0)+1));
+  $('#tagChips').innerHTML = TAGS.filter(t => tc[t]).map(t => `<button class="chip tag ${state.tags.has(t)?'on':''}" data-tag="${t}">${t}<span class="n">${tc[t]}</span></button>`).join('');
+}
+function renderStats(f) {
+  const rain = P.filter(p => p.tags.includes("טוב לגשם")).length, noted = P.filter(p => p.note).length;
+  $('#stats').innerHTML = [[P.length,'מקומות שמורים'],[DATA.lists.length,'רשימות'],[noted,'עם הערה'],[rain,'טובים לגשם']]
+    .map(([v,l]) => `<div class="stat"><b>${v}</b><span>${l}</span></div>`).join('');
+  $('#mapCount').textContent = `${f.length} מתוך ${P.length}`;
+  $('#mapTitle').textContent = state.sel !== null ? P[state.sel].name : (state.area || 'כל האזורים');
+  $('#zoomOut').hidden = state.sel === null && !state.area;
+}
+function renderList(f) {
+  const el = $('#list');
+  if (!f.length) { el.innerHTML = `<div class="empty">אין מקומות שמתאימים לסינון הזה.</div>`; return; }
+  el.innerHTML = f.map(p => `
+    <div class="card ${state.sel===p.i?'sel':''}" data-i="${p.i}" tabindex="0" style="--c:${LISTS[p.list].color}">
+      <div class="bar"></div>
+      <div>
+        <div class="name">${esc(p.name)}</div>
+        <div class="meta"><span class="t">${LISTS[p.list].short}</span><span class="t">${p.area}</span>${p.tags.map(t=>`<span class="t">${t}</span>`).join('')}</div>
+        <div class="note ${p.note?'':'empty'}">${p.note?esc(p.note):'בלי הערה'}</div>
+      </div>
+      <a class="go" href="${mapsUrl(p)}" target="_blank" rel="noopener">פתח במפות ↗</a>
+    </div>`).join('');
+  if (state.sel !== null) { const c = el.querySelector('.card.sel'); if (c) c.scrollIntoView({block:'nearest'}); }
+}
+function renderSummary() {
+  const byList = DATA.lists.map(l => ({k:l.title, v:l.n, c:l.color}));
+  const ac = {}; P.forEach(p => ac[p.area]=(ac[p.area]||0)+1);
+  const byArea = AREAS_ORDER.filter(a=>ac[a]).map(a=>({k:a, v:ac[a]}));
+  const tc = {}; P.forEach(p => p.tags.forEach(t => tc[t]=(tc[t]||0)+1));
+  const byTag = TAGS.filter(t=>tc[t]).map(t=>({k:t,v:tc[t]}));
+  const block = (title, rows) => { const max = Math.max(...rows.map(r=>r.v)); return `<div class="panel"><h2>${title}</h2><div class="bars">${rows.map(r=>`<div class="b" style="--c:${r.c||'var(--amber)'}"><span>${r.k}</span><div class="track"><div class="fill" style="width:${r.v/max*100}%"></div></div><span class="v">${r.v}</span></div>`).join('')}</div></div>`; };
+  $('#summary').innerHTML = block('לפי רשימה', byList) + block('לפי אזור', byArea) + block('לפי תגית מההערות', byTag);
+}
+
+// ---- Google Maps ----
+let map, markers = [], iw, mapReady = false;
+function pin(color, big) {
+  const s = big ? 34 : 26;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${s}" height="${s}" viewBox="0 0 24 24"><path d="M12 2C7.6 2 4 5.6 4 10c0 5.6 8 12 8 12s8-6.4 8-12c0-4.4-3.6-8-8-8z" fill="${color}" stroke="#fff" stroke-width="1.6"/><circle cx="12" cy="10" r="3" fill="#fff"/></svg>`;
+  return { url: 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg), scaledSize: new google.maps.Size(s, s), anchor: new google.maps.Point(s/2, s) };
+}
+function initMap() {
+  map = new google.maps.Map($('#map'), {
+    center: {lat: 54.0, lng: 18.8}, zoom: 8, mapTypeControl: false, streetViewControl: true, fullscreenControl: true,
+    gestureHandling: 'greedy', clickableIcons: true,
+  });
+  iw = new google.maps.InfoWindow();
+  markers = P.map(p => {
+    const m = new google.maps.Marker({ position: {lat:p.lat, lng:p.lng}, map, title: p.name, icon: pin(LISTS[p.list].color, false) });
+    m.addListener('click', () => { state.sel = p.i; render(); });
+    return m;
+  });
+  mapReady = true;
+  render();
+}
+window.initMap = initMap;
+function fitTo(pts) {
+  if (!pts.length) return;
+  if (pts.length === 1) { map.setCenter({lat:pts[0].lat, lng:pts[0].lng}); map.setZoom(15); return; }
+  const b = new google.maps.LatLngBounds(); pts.forEach(p => b.extend({lat:p.lat, lng:p.lng}));
+  map.fitBounds(b, 48);
+}
+let lastView = '';
+function renderMap(f) {
+  if (!mapReady) return;
+  const vis = new Set(f.map(p=>p.i));
+  markers.forEach((m, i) => { m.setVisible(vis.has(i)); m.setIcon(pin(LISTS[P[i].list].color, state.sel === i)); m.setZIndex(state.sel === i ? 999 : 1); });
+  if (state.sel !== null) {
+    const p = P[state.sel];
+    map.panTo({lat:p.lat, lng:p.lng}); if (map.getZoom() < 16) map.setZoom(17);
+    iw.setContent(`<div class="iw"><b>${esc(p.name)}</b><div class="m">${LISTS[p.list].short} · ${p.area}</div>${p.note?`<p>${esc(p.note)}</p>`:''}<a href="${mapsUrl(p)}" target="_blank" rel="noopener">פתח בגוגל מפות ↗</a></div>`);
+    iw.open({map, anchor: markers[state.sel]});
+    lastView = 'sel';
+  } else {
+    iw.close();
+    const key = 'v:' + (state.area||'') + ':' + [...state.lists].join(',');
+    if (key !== lastView) { fitTo(f.length ? f : P); lastView = key; }
+  }
+}
+function render() { const f = filtered(); renderChips(); renderStats(f); renderMap(f); renderList(f); }
+
+document.addEventListener('click', e => {
+  const c = e.target.closest('.chip');
+  if (c && c.id !== 'zoomOut') {
+    if (c.dataset.list) { const id=c.dataset.list; state.lists.has(id) ? state.lists.delete(id) : state.lists.add(id); state.sel = null; }
+    else if (c.dataset.area !== undefined) { state.area = c.dataset.area || null; state.sel = null; }
+    else if (c.dataset.tag) { const t=c.dataset.tag; state.tags.has(t)?state.tags.delete(t):state.tags.add(t); }
+    render(); return;
+  }
+  if (e.target.id === 'zoomOut') { state.sel = null; state.area = null; lastView = ''; render(); return; }
+  const card = e.target.closest('.card');
+  if (card && !e.target.closest('a')) { state.sel = state.sel===+card.dataset.i ? null : +card.dataset.i; if (state.sel===null) lastView=''; render(); if (window.innerWidth < 860) $('#map').scrollIntoView({behavior:'smooth', block:'start'}); return; }
+  if (e.target.id === 'reset') { state.lists = new Set(); state.area=null; state.tags.clear(); state.q=''; $('#q').value=''; state.sel=null; lastView=''; render(); }
+});
+document.addEventListener('keydown', e => { const card = e.target.closest?.('.card'); if (card && (e.key==='Enter'||e.key===' ')) { e.preventDefault(); card.click(); } });
+$('#q').addEventListener('input', e => { state.q = e.target.value; state.sel = null; lastView=''; render(); });
+renderSummary(); render();
+</script>
+<script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDHnXdPmtivzPCAwK0VAS8Fz2PsszjboWM&callback=initMap&language=he&region=IL"></script>
+</body>
+</html>
