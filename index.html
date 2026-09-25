@@ -263,28 +263,37 @@ async function loadWeather() {
 }
 let wxKey = '';
 
-// ---------- directions ----------
-const ROUTES = {}; // key -> {legs:[{km,min,text}], totalKm, totalMin, result}
-let dirService = null;
-function routeKey(day) { const pts = dayPoints(day); return trip.settings.mode + '|' + pts.map(p => p.lat + ',' + p.lng).join(';'); }
+// ---------- routes (Google Routes API, one request per leg, cached) ----------
+const LEGS = {}; // "mode|lat,lng|lat,lng" -> {km,min,route} | {pending} | {error}
+let routesLib = null;
 function dayPoints(day) {
   const h = trip.settings.hotel; const pts = day.stops.map(s => BYID[s.pid]).filter(Boolean);
   return h && pts.length ? [h, ...pts, h] : pts;
 }
+const legKey = (a, b) => `${trip.settings.mode}|${a.lat},${a.lng}|${b.lat},${b.lng}`;
+function dayLegs(day) { const pts = dayPoints(day); const out = []; for (let i = 1; i < pts.length; i++) out.push(LEGS[legKey(pts[i-1], pts[i])] || null); return out; }
+function dayRoute(day) { // {legs, totalKm, totalMin, ready, error}
+  const legs = dayLegs(day); if (!legs.length) return null;
+  const ready = legs.every(l => l && l.km !== undefined);
+  const error = legs.find(l => l && l.error)?.error;
+  return { legs, ready, error, totalKm: ready ? legs.reduce((a, l) => a + l.km, 0) : 0, totalMin: ready ? legs.reduce((a, l) => a + l.min, 0) : 0 };
+}
 function fetchRoute(day) {
-  if (!dirService) return;
-  const key = routeKey(day), pts = dayPoints(day);
-  if (pts.length < 2 || ROUTES[key]) return;
-  ROUTES[key] = { pending: true };
-  const req = { origin: { lat: pts[0].lat, lng: pts[0].lng }, destination: { lat: pts[pts.length-1].lat, lng: pts[pts.length-1].lng },
-    waypoints: pts.slice(1, -1).map(p => ({ location: { lat: p.lat, lng: p.lng }, stopover: true })), travelMode: google.maps.TravelMode[trip.settings.mode] || 'DRIVING' };
-  dirService.route(req, (res, status) => {
-    if (status === 'OK') {
-      const legs = res.routes[0].legs.map(l => ({ km: l.distance.value / 1000, min: Math.round(l.duration.value / 60) }));
-      ROUTES[key] = { legs, totalKm: legs.reduce((a, l) => a + l.km, 0), totalMin: legs.reduce((a, l) => a + l.min, 0), result: res };
-    } else { ROUTES[key] = { error: status }; }
-    renderDays(); renderMap();
-  });
+  if (!routesLib) return;
+  const pts = dayPoints(day);
+  for (let i = 1; i < pts.length; i++) {
+    const a = pts[i-1], b = pts[i], key = legKey(a, b);
+    if (LEGS[key]) continue;
+    LEGS[key] = { pending: true };
+    routesLib.Route.computeRoutes({ origin: { lat: a.lat, lng: a.lng }, destination: { lat: b.lat, lng: b.lng }, travelMode: trip.settings.mode,
+      fields: ['path', 'legs', 'durationMillis', 'distanceMeters'], language: 'he', units: 'METRIC' })
+      .then(({ routes }) => {
+        const r = routes && routes[0]; if (!r) throw new Error('NO_ROUTE');
+        LEGS[key] = { km: (r.distanceMeters || 0) / 1000, min: Math.round((r.durationMillis || r.staticDurationMillis || 0) / 60000), route: r };
+      })
+      .catch(e => { console.warn('route', e); LEGS[key] = { error: (e && (e.code || e.message)) || 'ERROR' }; })
+      .finally(() => { renderDays(); renderMap(); });
+  }
 }
 const fmtLeg = l => `${l.min < 60 ? l.min + ' דק\'' : Math.floor(l.min/60) + ' ש\' ' + (l.min%60) + ' דק\''} · ${l.km < 10 ? l.km.toFixed(1) : Math.round(l.km)} ק"מ`;
 
@@ -302,10 +311,11 @@ function renderDays() {
   $('#days').innerHTML = trip.days.map((d, i) => {
     const date = dayDate(i), wx = date && WX[isoDate(date)];
     const extra = i > trip.settings.nights;
-    const r = ROUTES[routeKey(d)];
+    const r = dayRoute(d);
+    const legHtmlFor = (leg, suffix) => !leg ? '' : leg.pending ? `<div class="leg">מחשב…</div>` : leg.error ? `<div class="leg">מסלול לא זמין (${esc(String(leg.error))})</div>` : `<div class="leg"><b>${fmtLeg(leg)}</b>${suffix}</div>`;
     const stops = d.stops.map((s, j) => {
-      const p = BYID[s.pid]; const leg = r && r.legs && r.legs[trip.settings.hotel ? j : j - 1];
-      const legHtml = (j > 0 || trip.settings.hotel) && r && r.legs ? `<div class="leg"><b>${fmtLeg(leg)}</b>${j === 0 ? ' מהמלון' : ''}</div>` : '';
+      const p = BYID[s.pid]; const li = trip.settings.hotel ? j : j - 1; const leg = r && li >= 0 ? r.legs[li] : null;
+      const legHtml = legHtmlFor(leg, j === 0 ? ' מהמלון' : '');
       return `${legHtml}<div class="stop" data-di="${i}" data-si="${j}" style="--c:${LISTS[p.list].color}">
         <div><div class="n">${j+1}</div><div class="handle" title="גרור לשינוי סדר">⋮⋮</div></div>
         <div><div class="name" data-focus="${p.id}">${esc(p.name)}</div><div class="meta">${LISTS[p.list].short} · ${p.area}</div>
@@ -314,8 +324,8 @@ function renderDays() {
         <div class="acts"><button class="btn icon" title="הסר מהיום" data-remove="${i}:${j}">✕</button><a class="btn icon" href="${mapsUrl(p)}" target="_blank" rel="noopener" title="פתח בגוגל מפות">↗</a></div>
       </div>`;
     }).join('');
-    const back = trip.settings.hotel && d.stops.length && r && r.legs ? `<div class="leg"><b>${fmtLeg(r.legs[r.legs.length-1])}</b> חזרה למלון</div>` : '';
-    const total = r && r.legs ? `<div class="daytotal"><span>סה"כ נסיעה: <b>${fmtLeg({ km: r.totalKm, min: r.totalMin })}</b></span><span>${d.stops.length} עצירות</span></div>` : (r && r.error ? `<div class="hint">מסלול לא זמין (${r.error})</div>` : (d.stops.length ? `<div class="hint">מחשב מסלול…</div>` : ''));
+    const back = trip.settings.hotel && d.stops.length && r ? legHtmlFor(r.legs[r.legs.length-1], ' חזרה למלון') : '';
+    const total = r && r.ready ? `<div class="daytotal"><span>סה"כ נסיעה: <b>${fmtLeg({ km: r.totalKm, min: r.totalMin })}</b></span><span>${d.stops.length} עצירות</span></div>` : '';
     return `<section class="card day ${i === ui.activeDay ? 'active' : ''} ${ui.collapsed.has(d.id) ? 'collapsed' : ''}" data-day="${i}">
       <div class="dayhead" data-toggle="${i}">
         <span class="num">יום ${i+1}</span>
@@ -362,7 +372,7 @@ function renderPool() {
 }
 
 // ---------- map ----------
-let map, markers = {}, hotelMarker = null, iw, dirRenderer = null, mapReady = false;
+let map, markers = {}, hotelMarker = null, iw, mapReady = false, routeLines = [], routeLinesKey = '';
 const pin = (color, label) => {
   const s = label ? 34 : 24;
   const svg = label
@@ -373,8 +383,7 @@ const pin = (color, label) => {
 function initMap() {
   map = new google.maps.Map($('#map'), { center: { lat: 54.35, lng: 18.65 }, zoom: 11, mapTypeControl: false, streetViewControl: false, fullscreenControl: false, gestureHandling: 'greedy', clickableIcons: false });
   iw = new google.maps.InfoWindow();
-  dirService = new google.maps.DirectionsService();
-  dirRenderer = new google.maps.DirectionsRenderer({ map, suppressMarkers: true, preserveViewport: true, polylineOptions: { strokeColor: '#D99A2B', strokeWeight: 5, strokeOpacity: .85 } });
+  google.maps.importLibrary('routes').then(lib => { routesLib = lib; renderDays(); }).catch(e => console.warn('routes lib', e));
   P.forEach(p => { const m = new google.maps.Marker({ position: { lat: p.lat, lng: p.lng }, map, title: p.name, icon: pin(LISTS[p.list].color) }); m.addListener('click', () => openInfo(p)); markers[p.id] = m; });
   map.addListener('click', e => { if (ui.pickingHotel) { pickHotel(e.latLng); } });
   mapReady = true; renderMap();
@@ -403,8 +412,12 @@ function renderMap() {
   if (h) { if (!hotelMarker) { hotelMarker = new google.maps.Marker({ map, zIndex: 600 }); hotelMarker.addListener('click', () => { iw.setContent(`<div class="iw"><b>🏨 ${esc(h.name)}</b></div>`); iw.open({ map, anchor: hotelMarker }); }); }
     hotelMarker.setPosition({ lat: h.lat, lng: h.lng }); hotelMarker.setTitle(h.name); hotelMarker.setIcon({ url: 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 34 34"><rect x="4" y="4" width="26" height="26" rx="7" fill="#172230" stroke="#fff" stroke-width="3"/><text x="17" y="23" text-anchor="middle" font-size="16">🏨</text></svg>'), scaledSize: new google.maps.Size(34, 34), anchor: new google.maps.Point(17, 17) }); }
   else if (hotelMarker) { hotelMarker.setMap(null); hotelMarker = null; }
-  const r = showDay && ROUTES[routeKey(showDay)];
-  if (r && r.result) dirRenderer.setDirections(r.result); else dirRenderer.set('directions', null);
+  const legs = showDay ? dayLegs(showDay).filter(l => l && l.route) : [];
+  const lk = legs.map(l => l.route).map((_, i) => legKey(dayPoints(showDay)[i], dayPoints(showDay)[i+1])).join('>');
+  if (lk !== routeLinesKey) {
+    routeLines.forEach(l => l.setMap(null)); routeLines = []; routeLinesKey = lk;
+    legs.forEach(l => { try { const ls = l.route.createPolylines({ polylineOptions: { strokeColor: '#D99A2B', strokeWeight: 5, strokeOpacity: .85 } }); ls.forEach(pl => { pl.setMap(map); routeLines.push(pl); }); } catch (e) { console.warn('polyline', e); } });
+  }
   $('#mapbar').innerHTML = `<button class="chip ${ui.mapDay !== 'all' ? 'on' : ''}" data-mapday="active">${showDay ? 'יום ' + (ui.activeDay+1) : 'יום נבחר'}</button><button class="chip ${ui.mapDay === 'all' ? 'on' : ''}" data-mapday="all">כל המקומות</button><button class="chip" id="fitBtn">התאם למסך</button>`;
   $('#legend').innerHTML = DATA.lists.map(l => `<span style="--c:${l.color}"><i></i>${l.short}</span>`).join('');
   document.getElementById('map').style.cursor = ui.pickingHotel ? 'crosshair' : '';
@@ -449,6 +462,6 @@ $('#poolQ').addEventListener('input', e => { ui.poolQ = e.target.value; renderPo
 
 loadLocal(); ensureDays(); render(); initFirebase();
 </script>
-<script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDHnXdPmtivzPCAwK0VAS8Fz2PsszjboWM&callback=initMap&language=he&region=IL"></script>
+<script async src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDHnXdPmtivzPCAwK0VAS8Fz2PsszjboWM&callback=initMap&loading=async&language=he&region=PL"></script>
 </body>
 </html>
