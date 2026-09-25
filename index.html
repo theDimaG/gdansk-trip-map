@@ -286,7 +286,7 @@ function fetchRoute(day) {
     if (LEGS[key]) continue;
     LEGS[key] = { pending: true };
     routesLib.Route.computeRoutes({ origin: { lat: a.lat, lng: a.lng }, destination: { lat: b.lat, lng: b.lng }, travelMode: trip.settings.mode,
-      fields: ['path', 'legs', 'durationMillis', 'distanceMeters'], language: 'he', units: 'METRIC' })
+      fields: ['path', 'legs', 'durationMillis', 'distanceMeters'], language: 'he' })
       .then(({ routes }) => {
         const r = routes && routes[0]; if (!r) throw new Error('NO_ROUTE');
         LEGS[key] = { km: (r.distanceMeters || 0) / 1000, min: Math.round((r.durationMillis || r.staticDurationMillis || 0) / 60000), route: r };
