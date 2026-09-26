@@ -70,19 +70,21 @@ a{color:var(--amber-ink)}
 .pool .ph{display:flex;align-items:center;gap:8px;margin-bottom:8px}
 .addplace{display:flex;gap:6px;margin-bottom:8px}
 .addplace input{flex:1;min-width:0}
-.gres{display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
-.gitem{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+.gres{display:flex;flex-direction:column;gap:6px;margin-bottom:10px;max-height:380px;overflow-y:auto}
+.gitem{display:flex;flex-direction:column;gap:6px;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:8px 10px}
 .gitem b{font-size:14px}
 .gitem .meta{font-size:12px;color:var(--ink-2)}
 .gres .hint{padding:4px 2px}
-.gadd{display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.gadd{display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-start}
 .gadd select{font-size:12px;padding:4px 6px;max-width:130px}
 .pitem .dup{margin-top:4px;font-size:12px;color:var(--warn)}
 .pitem .dup .link{color:var(--amber-ink);margin-inline-start:6px}
 .pitem .rm{border:0;background:none;color:var(--ink-3);cursor:pointer;font-size:14px;padding:2px 6px;border-radius:6px}
 .pitem .rm:hover{background:var(--surface);color:var(--warn)}
 .pitem .side{display:flex;flex-direction:column;gap:4px;align-items:flex-end}
-.pool .ph h2{flex:1}
+.pool .ph h2{flex:1;cursor:pointer}
+.pool.collapsed .ph{margin-bottom:0}
+.pool.collapsed > *:not(.ph){display:none}
 
 .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px}
 .chip{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:4px 11px;font-size:13px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
@@ -216,7 +218,7 @@ label.f > *{font-size:14px;color:var(--ink)}
     <div id="days"></div>
 
     <section class="card pool">
-      <div class="ph"><h2 style="font-size:16px">מאגר המקומות <span class="hint" id="poolCount"></span></h2><button class="btn small desk" id="jumpDays">לימים ↑</button></div>
+      <div class="ph"><h2 style="font-size:16px" id="poolTitle">מאגר המקומות <span class="hint" id="poolCount"></span></h2><button class="btn small desk" id="jumpDays">לימים ↑</button><button class="btn icon" id="poolToggle" title="כווץ/פתח">▾</button></div>
       <div class="addplace"><input type="search" id="gq" placeholder="הוסף מקום מגוגל מפות: שם או כתובת" autocomplete="off"><button class="btn small primary" id="gsearch" type="button">חפש</button></div>
       <div class="gres" id="gres"></div>
       <div class="filters" id="poolLists"></div>
@@ -255,13 +257,17 @@ function guessList(r) {
 const catOptions = sel => DATA.lists.map(l => `<option value="${l.id}" ${l.id === sel ? 'selected' : ''}>${l.short}</option>`).join('');
 // duplicates: same spot, or nearby with a similar name (Google place ids differ from the saved-list ids)
 const normName = n => (n || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/ł/g, 'l').replace(/[^a-z0-9\u0590-\u05ff ]+/g, ' ').trim();
+// 2 = same name, 1 = close variant (one extra word, e.g. "… Śródmieście"), 0 = different
 function nameSim(a, b) {
-  const x = normName(a), y = normName(b); if (!x || !y) return false;
-  if (x === y || x.includes(y) || y.includes(x)) return true;
-  const ta = new Set(x.split(/\s+/).filter(w => w.length > 2)), tb = new Set(y.split(/\s+/).filter(w => w.length > 2));
-  const inter = [...ta].filter(w => tb.has(w)).length; return inter >= 2 || (inter >= 1 && Math.min(ta.size, tb.size) === 1);
+  const x = normName(a), y = normName(b); if (!x || !y) return 0;
+  if (x === y) return 2;
+  const ta = x.split(/\s+/).filter(Boolean), tb = y.split(/\s+/).filter(Boolean);
+  if ((x.includes(y) || y.includes(x)) && Math.abs(ta.length - tb.length) <= 1) return 1;
+  const sa = new Set(ta), sb = new Set(tb); const inter = [...sa].filter(w => sb.has(w)).length; const jac = inter / (sa.size + sb.size - inter);
+  return jac >= 0.6 ? 1 : 0;
 }
-const isDup = (a, b) => { const d = kmBetween(a.lat, a.lng, b.lat, b.lng); return d < 0.06 || (d < 0.4 && nameSim(a.name, b.name)); };
+// shops inside a mall share its coordinates, so distance alone never counts as a duplicate
+const isDup = (a, b) => { const d = kmBetween(a.lat, a.lng, b.lat, b.lng), n = nameSim(a.name, b.name); return (n === 2 && d < 0.5) || (n === 1 && d < 0.2); };
 function findDuplicate(r, pool) { return (pool || P).find(p => p.id !== r.id && isDup(p, r)) || null; }
 const LISTS = Object.fromEntries([...DATA.lists, CUSTOM_LIST].map(l => [l.id, l]));
 const BASE = DATA.places.map(p => ({...p, id: p.cid || (p.lat + ',' + p.lng)}));
@@ -285,8 +291,9 @@ const uid = () => Math.random().toString(36).slice(2, 9);
 // ---------- state ----------
 let trip = { settings: { start: '', nights: 7, mode: 'DRIVING', hotel: null }, days: [], custom: [] };
 let ui = { activeDay: null, poolLists: new Set(), poolQ: '', poolHide: true, collapsed: new Set(), pickingHotel: false, mapDay: 'active' };
-try { const u = JSON.parse(localStorage.getItem('ui:' + TRIP_ID) || 'null'); if (u && Array.isArray(u.collapsed)) ui.collapsed = new Set(u.collapsed); } catch (e) {}
-function saveUi() { try { localStorage.setItem('ui:' + TRIP_ID, JSON.stringify({ collapsed: [...ui.collapsed] })); } catch (e) {} }
+try { const u = JSON.parse(localStorage.getItem('ui:' + TRIP_ID) || 'null'); if (u && Array.isArray(u.collapsed)) ui.collapsed = new Set(u.collapsed); if (u && u.poolCollapsed) ui.poolCollapsed = true; } catch (e) {}
+function saveUi() { try { localStorage.setItem('ui:' + TRIP_ID, JSON.stringify({ collapsed: [...ui.collapsed], poolCollapsed: !!ui.poolCollapsed })); } catch (e) {} }
+function setPoolCollapsed(v) { ui.poolCollapsed = !!v; saveUi(); $('.pool').classList.toggle('collapsed', ui.poolCollapsed); $('#poolToggle').textContent = ui.poolCollapsed ? '▸' : '▾'; }
 let remoteReady = false;
 
 function ensureDays() {
@@ -459,6 +466,7 @@ function renderPool() {
   const q = ui.poolQ.trim().toLowerCase();
   const items = P.filter(p => (!ui.poolLists.size || ui.poolLists.has(p.list)) && (!ui.poolHide || !am[p.id] || dupOf[p.id]) && (!q || p.name.toLowerCase().includes(q) || p.note.toLowerCase().includes(q) || p.area.includes(q)));
   $('#poolCount').textContent = `${items.length} מתוך ${P.length}`;
+  $('.pool').classList.toggle('collapsed', !!ui.poolCollapsed); $('#poolToggle').textContent = ui.poolCollapsed ? '▸' : '▾';
   const dayOpts = trip.days.map((d, i) => `<option value="${i}">${dayOption(i)}</option>`).join('');
   $('#pool').innerHTML = items.map(p => `<div class="pitem" data-pid="${p.id}" style="--c:${LISTS[p.list].color}">
     <div class="bar"></div>
@@ -511,6 +519,7 @@ async function searchPlaces(q) {
         : `<div class="gadd"><select data-gcat="${i}" title="קטגוריה">${catOptions(guessList(r))}</select><button class="btn small primary" type="button" data-gadd="${i}">הוסף</button></div>`;
       return `<div class="gitem"><div><b>${esc(r.name)}</b><div class="meta">${r.rating ? `★ ${r.rating}${r.count ? ` (${r.count})` : ''} · ` : ''}${esc(r.type ? r.type + ' · ' : '')}${esc(r.addr)}</div></div>${action}</div>`;
     }).join('') + '<button class="link" id="gclear" type="button">סגור תוצאות</button>';
+    box.insertAdjacentHTML('afterbegin', `<div class="row" style="justify-content:space-between"><span class="hint">${gResults.length} תוצאות</span><button class="link" id="gclear2" type="button">סגור תוצאות</button></div>`);
   } catch (e) {
     console.warn('places', e);
     const msg = String(e && (e.message || e));
@@ -620,14 +629,15 @@ document.addEventListener('click', e => {
   if (t.dataset.collapse) { const id = t.dataset.collapse; ui.collapsed.has(id) ? ui.collapsed.delete(id) : ui.collapsed.add(id); saveUi(); renderDays(); return; }
   if (t.id === 'collapseAll') { trip.days.forEach(d => ui.collapsed.add(d.id)); saveUi(); renderDays(); return; }
   if (t.id === 'expandAll') { ui.collapsed.clear(); saveUi(); renderDays(); return; }
-  if (t.id === 'jumpPool') { $('.pool').scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
+  if (t.id === 'jumpPool') { setPoolCollapsed(false); $('.pool').scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
   if (t.id === 'jumpDays') { $('#side').scrollTo({ top: 0, behavior: 'smooth' }); return; }
   if (t.id === 'tabPool') { setView('pool'); return; }
-  if (t.id === 'gsearch') { const q = $('#gq').value.trim(); if (q) searchPlaces(q); return; }
+  if (t.id === 'gsearch') { const q = $('#gq').value.trim(); if (q) { setPoolCollapsed(false); searchPlaces(q); } return; }
   if (t.dataset.gadd !== undefined) { const sel = t.closest('.gitem')?.querySelector('[data-gcat]'); addCustom(gResults[+t.dataset.gadd], sel ? sel.value : ''); return; }
   if (t.dataset.gforce !== undefined) { const r = gResults[+t.dataset.gforce]; const w = t.closest('.gadd'); w.innerHTML = `<select data-gcat="${t.dataset.gforce}" title="קטגוריה">${catOptions(guessList(r))}</select><button class="btn small primary" type="button" data-gadd="${t.dataset.gforce}">הוסף</button>`; return; }
   if (t.dataset.merge) { const [dupId, intoId] = t.dataset.merge.split('|'); mergeCustom(dupId, intoId); return; }
-  if (t.id === 'gclear') { $('#gres').innerHTML = ''; return; }
+  if (t.id === 'gclear' || t.id === 'gclear2') { $('#gres').innerHTML = ''; return; }
+  if (t.id === 'poolToggle' || t.closest('#poolTitle')) { setPoolCollapsed(!ui.poolCollapsed); return; }
   if (t.dataset.rmcustom) { trip.custom = (trip.custom || []).filter(c => c.id !== t.dataset.rmcustom); commit(); toast('הוסר מהמאגר'); return; }
   if (t.dataset.remove) { const [i, j] = t.dataset.remove.split(':').map(Number); trip.days[i].stops.splice(j, 1); commit(); return; }
   if (t.dataset.deleteday) { trip.days.splice(+t.dataset.deleteday, 1); commit(); return; }
