@@ -121,6 +121,13 @@ def to_markdown(plan, places):
         for c in plan["custom"]:
             lines.append("- **%s** (%s) — %s" % (c.get("name"), c.get("area", ""), c.get("uri") or "https://www.google.com/maps/search/?api=1&query=%s,%s" % (c.get("lat"), c.get("lng"))))
         lines.append("")
+    packing = plan.get("packing") or []
+    if packing:
+        done = sum(1 for x in packing if x.get("done"))
+        lines.append("## רשימת ציוד (%d/%d נלקחו)" % (done, len(packing)))
+        for x in packing:
+            lines.append("- [%s] %s" % ("x" if x.get("done") else " ", x.get("text", "")))
+        lines.append("")
     return "\n".join(lines)
 
 
