@@ -39,12 +39,50 @@ a{color:var(--amber-ink)}
 .top .sync.on i{background:var(--ok)}
 .top .sync.err i{background:var(--warn)}
 .top .spacer{flex:1}
-.tabs{display:none;gap:4px}
+.tabs{display:flex;gap:4px}
+.mob{display:none!important}
 .tabs button{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:8px;padding:6px 12px}
 .tabs button.on{background:var(--ink);color:var(--surface);border-color:var(--ink)}
 
 .side{overflow-y:auto;border-inline-start:1px solid var(--line);background:var(--bg);padding:14px 16px 80px;display:flex;flex-direction:column;gap:14px}
 .mapwrap{position:relative;min-height:0}
+.summary-view{display:none;grid-column:1/-1;overflow-y:auto;padding:16px;background:var(--bg)}
+.app[data-view="summary"] .summary-view{display:block}
+.app[data-view="summary"] .side,.app[data-view="summary"] .mapwrap{display:none}
+.sum-wrap{max-width:1100px;margin:0 auto;display:flex;flex-direction:column;gap:14px;padding-bottom:40px}
+.sum-stats{display:flex;gap:10px;flex-wrap:wrap}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px 14px;min-width:96px}
+.stat b{display:block;font-family:Rubik,Heebo,sans-serif;font-size:20px;line-height:1.1;font-variant-numeric:tabular-nums}
+.stat span{font-size:12px;color:var(--ink-3)}
+.sum-h{font-size:16px;margin-top:6px}
+.cal-week{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;font-size:12px;color:var(--ink-3);text-align:center}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}
+.cal-cell{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px;min-height:130px;cursor:pointer;display:flex;flex-direction:column;gap:4px;min-width:0}
+.cal-cell.pad{background:transparent;border:0;cursor:default}
+.cal-cell.empty{border-style:dashed}
+.cal-cell.active{border-color:var(--amber);box-shadow:0 0 0 2px var(--amber-soft)}
+.cal-cell:hover:not(.pad){border-color:var(--ink-3)}
+.cal-head{display:flex;justify-content:space-between;align-items:center;gap:6px;flex-wrap:wrap}
+.cal-head b{font-family:Rubik,Heebo,sans-serif;font-size:14px}
+.cal-title{font-size:13px;font-weight:700;color:var(--amber-ink)}
+.cal-meta{font-size:11px;color:var(--ink-3)}
+.cal-stops{list-style:none;margin:0;padding:0;font-size:12px;display:flex;flex-direction:column;gap:2px}
+.cal-stops li{display:flex;align-items:center;gap:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cal-stops i{width:7px;height:7px;border-radius:50%;flex:none}
+.cal-stops .more{color:var(--ink-3)}
+.insights{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:10px}
+.ins{display:grid;grid-template-columns:28px 1fr;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.ins-ico{font-size:20px}
+.ins-t{font-size:13px;color:var(--ink-2);margin-top:2px}
+.ins-a{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.dayhandle{cursor:grab;color:var(--ink-3);font-size:15px;padding:2px 4px;border:0;background:none;line-height:1;touch-action:none}
+.day.sortable-ghost{opacity:.4}
+.day.swap-target{outline:2px dashed var(--amber)}
+@media (max-width:860px){
+  .mob{display:inline-flex!important}
+  .cal{grid-template-columns:repeat(2,1fr)}
+  .cal-week,.cal-cell.pad{display:none}
+}
 #map{position:absolute;inset:0}
 .mapbar{position:absolute;top:10px;right:10px;left:70px;display:flex;gap:6px;flex-wrap:wrap;z-index:2;pointer-events:none}
 .mapbar .chip{pointer-events:auto}
@@ -176,6 +214,7 @@ label.f > *{font-size:14px;color:var(--ink)}
 .ctxmenu button{text-align:right;border:0;background:none;color:var(--ink);padding:6px 8px;border-radius:6px;cursor:pointer;font-size:13px;display:flex;justify-content:space-between;gap:8px}
 .ctxmenu button:hover,.ctxmenu button:focus-visible{background:var(--surface-2);outline:none}
 .ctxmenu button .ok{color:var(--ok);font-size:12px}
+.ctxmenu button.danger{color:var(--warn);border-top:1px solid var(--line);margin-top:4px;border-radius:0 0 6px 6px}
 .iw .days{display:flex;flex-wrap:wrap;gap:4px;margin:2px 0 8px}
 .iw .days button{font:inherit;font-size:12px;padding:3px 9px;border-radius:999px;border:1px solid #D3DAE1;background:#fff;color:#172230;cursor:pointer}
 .iw .days button.in{background:#FBF1DD;border-color:#D99A2B;color:#8A5D0E}
@@ -190,7 +229,7 @@ label.f > *{font-size:14px;color:var(--ink)}
     <h1>מתכנן הטיול לגדנסק</h1>
     <span class="sync" id="sync"><i></i><span>מתחבר…</span></span>
     <span class="spacer"></span>
-    <div class="tabs"><button id="tabPlan" class="on">תכנון</button><button id="tabPool">מקומות</button><button id="tabMap">מפה</button></div>
+    <div class="tabs"><button id="tabPlan" class="on">תכנון</button><button id="tabPool" class="mob">מקומות</button><button id="tabMap" class="mob">מפה</button><button id="tabSummary">סיכום</button></div>
     <a class="btn small" href="places.html">כל המקומות ↗</a>
   </div>
 
@@ -233,6 +272,7 @@ label.f > *{font-size:14px;color:var(--ink)}
     <div class="mapbar" id="mapbar"></div>
     <div class="legend" id="legend"></div>
   </div>
+  <section class="summary-view" id="summaryView"></section>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.6/Sortable.min.js"></script>
@@ -268,8 +308,9 @@ function nameSim(a, b) {
 }
 // shops inside a mall share its coordinates, so distance alone never counts as a duplicate
 const isDup = (a, b) => { const d = kmBetween(a.lat, a.lng, b.lat, b.lng), n = nameSim(a.name, b.name); return (n === 2 && d < 0.5) || (n === 1 && d < 0.2); };
-function findDuplicate(r, pool) { return (pool || P).find(p => p.id !== r.id && isDup(p, r)) || null; }
-const LISTS = Object.fromEntries([...DATA.lists, CUSTOM_LIST].map(l => [l.id, l]));
+function findDuplicate(r, pool) { return (pool || P).find(p => p.id !== r.id && !p.deleted && isDup(p, r)) || null; }
+const DELETED_LIST = { id: 'deleted', title: 'נמחקו', short: 'נמחק', color: '#6B7280', n: 0 };
+const LISTS = Object.fromEntries([...DATA.lists, CUSTOM_LIST, DELETED_LIST].map(l => [l.id, l]));
 const BASE = DATA.places.map(p => ({...p, id: p.cid || (p.lat + ',' + p.lng)}));
 const BASE_BYID = Object.fromEntries(BASE.map(p => [p.id, p]));
 let P = BASE.slice(), BYID = { ...BASE_BYID };
@@ -279,7 +320,9 @@ const kmBetween = (a, b, c, d) => { const R = 6371, p1 = a*Math.PI/180, p2 = c*M
 function areaOf(lat, lng) { let best = null; for (const [n, alat, alng, r] of AREAS) { const d = kmBetween(lat, lng, alat, alng); if (d <= r && (!best || d < best[1])) best = [n, d]; } return best ? best[0] : 'אזור אחר'; }
 function rebuildPlaces() {
   const customs = (trip.custom || []).map(c => ({ id: c.id, list: LISTS[c.list] && c.list !== 'custom' ? c.list : 'custom', name: c.name, note: c.note || '', lat: c.lat, lng: c.lng, area: c.area || areaOf(c.lat, c.lng), tags: [], cid: '', uri: c.uri || '', custom: true }));
-  P = [...BASE, ...customs]; BYID = Object.fromEntries(P.map(p => [p.id, p])); LISTS.custom.n = customs.filter(c => c.list === 'custom').length;
+  const del = new Set(trip.deleted || []);
+  P = [...BASE, ...customs].map(p => del.has(p.id) ? { ...p, origList: p.list, list: 'deleted', deleted: true } : p);
+  BYID = Object.fromEntries(P.map(p => [p.id, p])); LISTS.custom.n = customs.filter(c => c.list === 'custom' && !del.has(c.id)).length; LISTS.deleted.n = P.filter(p => p.deleted).length;
 }
 const $ = s => document.querySelector(s);
 const esc = s => (s||'').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -289,7 +332,7 @@ const HE_SHORT = ['א׳','ב׳','ג׳','ד׳','ה׳','ו׳','ש׳'];
 const uid = () => Math.random().toString(36).slice(2, 9);
 
 // ---------- state ----------
-let trip = { settings: { start: '', nights: 7, mode: 'DRIVING', hotel: null }, days: [], custom: [] };
+let trip = { settings: { start: '', nights: 7, mode: 'DRIVING', hotel: null }, days: [], custom: [], deleted: [] };
 let ui = { activeDay: null, poolLists: new Set(), poolQ: '', poolHide: true, collapsed: new Set(), pickingHotel: false, mapDay: 'active' };
 try { const u = JSON.parse(localStorage.getItem('ui:' + TRIP_ID) || 'null'); if (u && Array.isArray(u.collapsed)) ui.collapsed = new Set(u.collapsed); if (u && u.poolCollapsed) ui.poolCollapsed = true; } catch (e) {}
 function saveUi() { try { localStorage.setItem('ui:' + TRIP_ID, JSON.stringify({ collapsed: [...ui.collapsed], poolCollapsed: !!ui.poolCollapsed })); } catch (e) {} }
@@ -331,7 +374,8 @@ function normalize(t) {
   const custom = (t.custom || []).filter(c => c && c.id && typeof c.lat === 'number' && typeof c.lng === 'number' && c.name).map(c => ({ id: String(c.id), name: c.name, lat: c.lat, lng: c.lng, note: c.note || '', area: c.area || '', uri: c.uri || '', list: c.list || '' }));
   const known = new Set(custom.map(c => c.id));
   const days = (t.days || []).map(d => ({ id: d.id || uid(), title: d.title || '', note: d.note || '', stops: (d.stops || []).filter(x => BASE_BYID[x.pid] || known.has(x.pid)).map(x => ({ pid: x.pid, note: x.note || '' })) }));
-  return { settings: s, days, custom };
+  const deleted = [...new Set((t.deleted || []).map(String))];
+  return { settings: s, days, custom, deleted };
 }
 function loadLocal() { try { const l = JSON.parse(localStorage.getItem('trip:' + TRIP_ID) || 'null'); if (l) trip = normalize(l); } catch (e) {} }
 function save(now) {
@@ -357,7 +401,7 @@ async function loadWeather() {
     const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${c.lat}&longitude=${c.lng}&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=Europe%2FWarsaw&start_date=${isoDate(from)}&end_date=${isoDate(to)}`);
     const j = await r.json();
     (j.daily?.time || []).forEach((t, i) => WX[t] = { code: j.daily.weather_code[i], max: Math.round(j.daily.temperature_2m_max[i]), min: Math.round(j.daily.temperature_2m_min[i]), rain: j.daily.precipitation_probability_max[i] });
-    renderDays();
+    renderDays(); if ($('#app').dataset.view === 'summary') renderSummary();
   } catch (e) { console.warn('weather', e); }
 }
 let wxKey = '';
@@ -391,13 +435,13 @@ function fetchRoute(day) {
         LEGS[key] = { km: (r.distanceMeters || 0) / 1000, min: Math.round((r.durationMillis || r.staticDurationMillis || 0) / 60000), route: r };
       })
       .catch(e => { console.warn('route', e); LEGS[key] = { error: (e && (e.code || e.message)) || 'ERROR' }; })
-      .finally(() => { renderDays(); renderMap(); });
+      .finally(() => { renderDays(); renderMap(); if ($('#app').dataset.view === 'summary') renderSummary(); });
   }
 }
 const fmtLeg = l => `${l.min < 60 ? l.min + ' דק\'' : Math.floor(l.min/60) + ' ש\' ' + (l.min%60) + ' דק\''} · ${l.km < 10 ? l.km.toFixed(1) : Math.round(l.km)} ק"מ`;
 
 // ---------- render ----------
-function render() { rebuildPlaces(); renderSettings(); renderDays(); renderPool(); renderMap(); const k = trip.settings.start + '|' + trip.days.length; if (k !== wxKey) { wxKey = k; loadWeather(); } }
+function render() { rebuildPlaces(); renderSettings(); renderDays(); renderPool(); renderMap(); if ($('#app').dataset.view === 'summary') renderSummary(); const k = trip.settings.start + '|' + trip.days.length; if (k !== wxKey) { wxKey = k; loadWeather(); } }
 function renderSettings() {
   $('#sStart').value = trip.settings.start || ''; $('#sNights').value = trip.settings.nights; $('#sMode').value = trip.settings.mode;
   const h = trip.settings.hotel; $('#hotelName').textContent = h ? h.name : 'לא הוגדר'; $('#clearHotel').hidden = !h;
@@ -427,6 +471,7 @@ function renderDays() {
     const total = r && r.ready ? `<div class="daytotal"><span>סה"כ נסיעה: <b>${fmtLeg({ km: r.totalKm, min: r.totalMin })}</b></span><span>${d.stops.length} עצירות</span></div>` : '';
     return `<section class="card day ${i === ui.activeDay ? 'active' : ''} ${ui.collapsed.has(d.id) ? 'collapsed' : ''}" data-day="${i}">
       <div class="dayhead" data-toggle="${i}">
+        <button class="dayhandle" type="button" title="גרור כדי להחליף עם יום אחר">⋮⋮</button>
         <span class="num">${dayLabel(i)}</span>
         <div class="t"><b>${esc(d.title) || (date ? `יום ${i+1} בטיול` : 'ללא תאריך')}</b><span>${d.stops.length ? d.stops.length + ' עצירות' : 'ריק'}${extra ? ' · מחוץ לטווח הלילות' : ''}${r && r.ready ? ' · ' + fmtLeg({ km: r.totalKm, min: r.totalMin }) : ''}</span>${ui.collapsed.has(d.id) && d.stops.length ? `<span class="mini">${d.stops.map(s => esc(BYID[s.pid].name)).join(' ← ')}</span>` : ''}</div>
         ${wx ? `<span class="wx"><span class="ico">${WX_ICON(wx.code)}</span><span>${wx.max}°/${wx.min}°</span>${wx.rain >= 30 ? `<span class="rain">☂ ${wx.rain}%</span>` : ''}</span>` : ''}
@@ -442,6 +487,7 @@ function renderDays() {
     </section>`;
   }).join('') + `<button class="btn" id="addDay" style="width:100%">+ הוסף יום</button>`;
   document.querySelectorAll('[data-stops]').forEach(el => new Sortable(el, { group: 'stops', handle: '.handle', animation: 150, onEnd: onSort }));
+  initDaysSortable();
   const nStops = trip.days.reduce((a, d) => a + d.stops.length, 0);
   $('#daysHint').textContent = `${trip.days.length} ימים · ${nStops} עצירות`;
   // dragging something over a collapsed day opens it so it can be dropped into
@@ -458,20 +504,22 @@ function onSort(e) {
 }
 function renderPool() {
   const am = assignedMap();
-  const lists = LISTS.custom.n ? [...DATA.lists, LISTS.custom] : DATA.lists;
+  const lists = [...DATA.lists, ...(LISTS.custom.n ? [LISTS.custom] : []), ...(LISTS.deleted.n ? [LISTS.deleted] : [])];
+  if (!LISTS.deleted.n) ui.poolLists.delete('deleted');
+  const showDeleted = ui.poolLists.has('deleted');
   $('#poolLists').innerHTML = lists.map(l => `<button class="chip lst ${ui.poolLists.has(l.id) ? 'on' : (ui.poolLists.size ? 'off' : '')}" data-pl="${l.id}" style="--c:${l.color}"><span class="dot"></span>${l.short}</button>`).join('');
   $('#poolMore').innerHTML = `<button class="chip ${ui.poolHide ? 'on' : ''}" id="poolHide">הסתר מה שכבר בתכנון</button>`;
   const dupOf = {}; P.forEach(p => { if (p.custom) { const d = findDuplicate(p, P.filter(x => !x.custom || x.id < p.id)); if (d) dupOf[p.id] = d; } });
   const nDup = Object.keys(dupOf).length;
   const q = ui.poolQ.trim().toLowerCase();
-  const items = P.filter(p => (!ui.poolLists.size || ui.poolLists.has(p.list)) && (!ui.poolHide || !am[p.id] || dupOf[p.id]) && (!q || p.name.toLowerCase().includes(q) || p.note.toLowerCase().includes(q) || p.area.includes(q)));
-  $('#poolCount').textContent = `${items.length} מתוך ${P.length}`;
+  const items = P.filter(p => (showDeleted ? p.deleted : (!p.deleted && (!ui.poolLists.size || ui.poolLists.has(p.list)))) && (!ui.poolHide || !am[p.id] || dupOf[p.id] || p.deleted) && (!q || p.name.toLowerCase().includes(q) || p.note.toLowerCase().includes(q) || p.area.includes(q)));
+  $('#poolCount').textContent = showDeleted ? `${items.length} נמחקו` : `${items.length} מתוך ${P.length - LISTS.deleted.n}`;
   $('.pool').classList.toggle('collapsed', !!ui.poolCollapsed); $('#poolToggle').textContent = ui.poolCollapsed ? '▸' : '▾';
   const dayOpts = trip.days.map((d, i) => `<option value="${i}">${dayOption(i)}</option>`).join('');
   $('#pool').innerHTML = items.map(p => `<div class="pitem" data-pid="${p.id}" style="--c:${LISTS[p.list].color}">
     <div class="bar"></div>
     <div><div class="name" data-focus="${p.id}">${esc(p.name)}</div><div class="meta">${LISTS[p.list].short} · ${p.area}${p.custom ? ' · נוסף מגוגל מפות' : ''}${am[p.id] ? ` · <span class="used">בתכנון: ${am[p.id].map(i=>dayLabel(i)).join(', ')}</span>` : ''}</div>${p.note ? `<div class="note">${esc(p.note)}</div>` : ''}${p.custom && dupOf[p.id] ? `<div class="dup">כפילות של <b>${esc(dupOf[p.id].name)}</b> <button class="link" type="button" data-merge="${p.id}|${dupOf[p.id].id}">החלף במקור</button></div>` : ''}</div>
-    <div class="side"><select data-addto="${p.id}"><option value="">הוסף ליום…</option>${dayOpts}</select>${p.custom ? `<select data-catof="${p.id}" title="קטגוריה"><option value="custom" ${p.list === 'custom' ? 'selected' : ''}>ללא קטגוריה</option>${catOptions(p.list)}</select>` : ''}${p.custom && !am[p.id] ? `<button class="rm" type="button" data-rmcustom="${p.id}" title="הסר מהמאגר">✕ הסר</button>` : ''}</div>
+    <div class="side">${p.deleted ? `<button class="btn small" type="button" data-restore="${p.id}">↩ שחזר</button>` : `<select data-addto="${p.id}"><option value="">הוסף ליום…</option>${dayOpts}</select>`}${p.custom && !p.deleted ? `<select data-catof="${p.id}" title="קטגוריה"><option value="custom" ${p.list === 'custom' ? 'selected' : ''}>ללא קטגוריה</option>${catOptions(p.list)}</select>` : ''}${p.custom && !am[p.id] ? `<button class="rm" type="button" data-rmcustom="${p.id}" title="הסר מהמאגר">✕ הסר</button>` : ''}</div>
   </div>`).join('') || '<div class="hint">אין תוצאות.</div>';
   new Sortable($('#pool'), { group: { name: 'stops', pull: 'clone', put: false }, sort: false, animation: 150, onEnd: e => {
     if (e.to === e.from) return;
@@ -536,6 +584,18 @@ function addCustom(r, listId) {
   $('#gres').innerHTML = ''; $('#gq').value = '';
   if (mapReady) { map.panTo({ lat: r.lat, lng: r.lng }); if (map.getZoom() < 12) map.setZoom(13); }
 }
+function softDelete(pid) {
+  const p = BYID[pid]; if (!p || p.deleted) return;
+  trip.deleted = [...new Set([...(trip.deleted || []), pid])];
+  let removed = 0; trip.days.forEach(d => { const n = d.stops.length; d.stops = d.stops.filter(s => s.pid !== pid); removed += n - d.stops.length; });
+  if (iw) iw.close(); commit();
+  toast(`${p.name} הועבר לקטגוריה "נמחק"${removed ? ` והוסר מ-${removed} ימים` : ''}. אפשר לשחזר מהמאגר.`);
+}
+function restorePlace(pid) {
+  trip.deleted = (trip.deleted || []).filter(x => x !== pid);
+  const m = markers[pid]; if (m) { m.setMap(null); delete markers[pid]; }
+  commit(); toast('שוחזר לקטגוריה המקורית');
+}
 function mergeCustom(dupId, intoId) {
   trip.days.forEach(d => {
     d.stops = d.stops.map(s => s.pid === dupId ? { ...s, pid: intoId } : s);
@@ -572,7 +632,8 @@ function showCtx(x, y, p) {
   ctxEl = document.createElement('div'); ctxEl.className = 'ctxmenu';
   ctxEl.innerHTML = `<div class="ct">${esc(p.name)}</div><div class="cl">הוסף ליום</div>` +
     trip.days.map((d, i) => `<button type="button" data-ctxday="${i}"><span>${dayOption(i)}</span>${mine.includes(i) ? '<span class="ok">✓ בתכנון</span>' : ''}</button>`).join('') +
-    `<button type="button" data-ctxinfo="1"><span>פרטים במפה</span></button>`;
+    `<button type="button" data-ctxinfo="1"><span>פרטים במפה</span></button>` +
+    (p.deleted ? `<button type="button" data-ctxrestore="1"><span>↩ שחזר לקטגוריה המקורית</span></button>` : `<button type="button" class="danger" data-ctxdelete="1"><span>🗑 מחק (יעבור ל"נמחק")</span></button>`);
   document.body.appendChild(ctxEl);
   const r = ctxEl.getBoundingClientRect();
   ctxEl.style.left = Math.max(8, Math.min(x, innerWidth - r.width - 8)) + 'px';
@@ -581,6 +642,8 @@ function showCtx(x, y, p) {
     const b = e.target.closest('button'); if (!b) return;
     if (b.dataset.ctxday !== undefined) addTo(+b.dataset.ctxday, p.id);
     else if (b.dataset.ctxinfo) focusPlace(p.id);
+    else if (b.dataset.ctxdelete) softDelete(p.id);
+    else if (b.dataset.ctxrestore) restorePlace(p.id);
     hideCtx();
   });
   ctxEl.querySelector('button')?.focus();
@@ -598,7 +661,7 @@ function renderMap() {
   const am = assignedMap();
   const showDay = ui.mapDay === 'all' ? null : trip.days[ui.activeDay];
   const inDay = {}; if (showDay) showDay.stops.forEach((s, j) => inDay[s.pid] = j + 1);
-  P.forEach(p => { const m = markers[p.id]; const lbl = inDay[p.id]; m.setIcon(pin(LISTS[p.list].color, lbl)); m.setZIndex(lbl ? 500 : (am[p.id] ? 2 : 1)); m.setOpacity(showDay && !lbl ? (am[p.id] ? .35 : .75) : 1); });
+  P.forEach(p => { const m = markers[p.id]; const lbl = inDay[p.id]; m.setVisible(!p.deleted); m.setIcon(pin(LISTS[p.list].color, lbl)); m.setZIndex(lbl ? 500 : (am[p.id] ? 2 : 1)); m.setOpacity(showDay && !lbl ? (am[p.id] ? .35 : .75) : 1); });
   const h = trip.settings.hotel;
   if (h) { if (!hotelMarker) { hotelMarker = new google.maps.Marker({ map, zIndex: 600 }); hotelMarker.addListener('click', () => { iw.setContent(`<div class="iw"><b>🏨 ${esc(h.name)}</b></div>`); iw.open({ map, anchor: hotelMarker }); }); }
     hotelMarker.setPosition({ lat: h.lat, lng: h.lng }); hotelMarker.setTitle(h.name); hotelMarker.setIcon({ url: 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 34 34"><rect x="4" y="4" width="26" height="26" rx="7" fill="#172230" stroke="#fff" stroke-width="3"/><text x="17" y="23" text-anchor="middle" font-size="16">🏨</text></svg>'), scaledSize: new google.maps.Size(34, 34), anchor: new google.maps.Point(17, 17) }); }
@@ -619,7 +682,83 @@ function fitDay() {
   const b = new google.maps.LatLngBounds(); pts.forEach(p => b.extend({ lat: p.lat, lng: p.lng })); map.fitBounds(b, 60);
 }
 function focusPlace(id) { const p = BYID[id]; if (!p || !mapReady) return; map.panTo({ lat: p.lat, lng: p.lng }); if (map.getZoom() < 15) map.setZoom(16); openInfo(p); if (window.innerWidth < 860) setView('map'); }
-function setView(v) { $('#app').dataset.view = v; $('#tabPlan').classList.toggle('on', v === 'plan'); $('#tabPool').classList.toggle('on', v === 'pool'); $('#tabMap').classList.toggle('on', v === 'map'); if (v === 'map' && mapReady) google.maps.event.trigger(map, 'resize'); }
+function setView(v) { $('#app').dataset.view = v; ['plan', 'pool', 'map', 'summary'].forEach(k => $('#tab' + k[0].toUpperCase() + k.slice(1)).classList.toggle('on', v === k)); if (v === 'summary') renderSummary(); if ((v === 'map' || v === 'plan') && mapReady) google.maps.event.trigger(map, 'resize'); }
+// ---------- swapping whole days by drag ----------
+let swapMounted = false;
+function initDaysSortable() {
+  const el = $('#days'); if (!el || el._sortable) return;
+  const opts = { handle: '.dayhandle', draggable: '.day', animation: 150, delay: 120, delayOnTouchOnly: true, onEnd: onDaySort };
+  try { if (Sortable.Swap) { if (!swapMounted) { Sortable.mount(new Sortable.Swap()); swapMounted = true; } opts.swap = true; opts.swapClass = 'swap-target'; } } catch (e) {}
+  el._sortable = new Sortable(el, opts);
+}
+function onDaySort(e) {
+  const from = e.oldDraggableIndex ?? e.oldIndex, to = e.newDraggableIndex ?? e.newIndex;
+  if (from === to || from == null || to == null || !trip.days[from] || !trip.days[to]) { renderDays(); return; }
+  const a = trip.days[from]; trip.days[from] = trip.days[to]; trip.days[to] = a;  // dates stay, contents swap
+  ui.activeDay = to; commit(); toast(`${dayLabel(from)} ⇄ ${dayLabel(to)}`);
+}
+// ---------- summary: calendar + insights ----------
+const FAR = ['מלבורק', 'ברודניצה', 'טורון'];
+const dayWx = i => { const d = dayDate(i); return d ? WX[isoDate(d)] : null; };
+const isRainy = w => !!w && (w.rain >= 50 || (w.code >= 51 && w.code <= 67) || (w.code >= 80 && w.code <= 82) || w.code >= 95);
+function dayStats(d) { const r = dayRoute(d); return { n: d.stops.length, km: r && r.ready ? r.totalKm : null, min: r && r.ready ? r.totalMin : null }; }
+function centroid(pts) { const v = pts.filter(Boolean); return { lat: v.reduce((a, p) => a + p.lat, 0) / v.length, lng: v.reduce((a, p) => a + p.lng, 0) / v.length }; }
+const shortOf = p => p ? LISTS[p.list].short : '';
+function buildInsights() {
+  const out = [], am = assignedMap(), unplanned = P.filter(p => !am[p.id] && !p.deleted);
+  if (!trip.settings.hotel) out.push({ icon: '🏨', title: 'המלון עדיין לא מסומן', text: 'סימון המלון על המפה מוסיף לכל יום את הנסיעה הראשונה והאחרונה, והזמנים יהיו מדויקים.' });
+  const empty = trip.days.map((d, i) => d.stops.length ? null : i).filter(i => i !== null);
+  if (empty.length) {
+    const byList = {}; unplanned.forEach(p => byList[shortOf(p)] = (byList[shortOf(p)] || 0) + 1);
+    out.push({ icon: '📅', title: `${empty.length} ימים עדיין ריקים`, text: `${empty.map(i => dayLabel(i)).join(', ')}. במאגר נשארו ${unplanned.length} מקומות לא משובצים: ${Object.entries(byList).map(([k, v]) => `${k} ${v}`).join(' · ')}.` });
+  }
+  trip.days.forEach((d, i) => {
+    const date = dayDate(i), wx = dayWx(i), lbl = dayLabel(i), stops = d.stops.map(s => BYID[s.pid]).filter(Boolean);
+    if (isRainy(wx)) {
+      const outdoor = stops.filter(p => p.tags.includes('לא לגשם'));
+      const indoor = unplanned.filter(p => p.tags.includes('טוב לגשם') && !FAR.includes(p.area)).slice(0, 3);
+      out.push({ icon: '🌧️', title: `${lbl}: צפוי גשם (${wx.rain}%)`, text: outdoor.length ? `עצירות שפחות מתאימות לגשם: ${outdoor.map(p => p.name).join(', ')}.` : (stops.length ? 'העצירות ביום הזה מתאימות גם לגשם.' : 'היום ריק. כדאי לשבץ בו מקומות מקורים.'), actions: indoor.map(p => ({ pid: p.id, day: i, label: p.name })) });
+    }
+    if (date && date.getDay() === 0) {
+      const shops = stops.filter(p => shortOf(p) === 'קניות'); if (shops.length) out.push({ icon: '🛍️', title: `${lbl}: קניות ביום ראשון`, text: `בפולין רוב החנויות סגורות ברוב ימי ראשון: ${shops.map(p => p.name).join(', ')}. עדיף להעביר ליום אחר.` });
+      const closed = stops.filter(p => /ראשון סגור/.test(p.note)); if (closed.length) out.push({ icon: '🚫', title: `${lbl}: סגור בימי ראשון`, text: `${closed.map(p => p.name).join(', ')}. להעביר ליום אחר.` });
+    }
+    const st = dayStats(d);
+    if (st.n > 7 || (st.min && st.min > 150)) out.push({ icon: '⚠️', title: `${lbl}: יום עמוס`, text: `${st.n} עצירות${st.min ? ` ו-${fmtLeg({ km: st.km, min: st.min })} נסיעה` : ''}. שקול להוריד עצירה או לפצל.` });
+    if (stops.length >= 3 && !stops.some(p => shortOf(p) === 'אוכל')) {
+      const c = centroid(stops);
+      const near = unplanned.filter(p => shortOf(p) === 'אוכל').map(p => ({ p, d: kmBetween(c.lat, c.lng, p.lat, p.lng) })).sort((a, b) => a.d - b.d).slice(0, 3);
+      out.push({ icon: '🍽️', title: `${lbl}: אין מקום לאכול`, text: near.length ? 'מסעדות ובתי קפה שמורים קרובים למסלול היום:' : 'כל מקומות האוכל השמורים כבר משובצים.', actions: near.map(x => ({ pid: x.p.id, day: i, label: `${x.p.name} (${x.d.toFixed(1)} ק"מ)` })) });
+    }
+    const areas = new Set(stops.map(p => p.area)), farAreas = [...areas].filter(a => FAR.includes(a));
+    if (farAreas.length && areas.size > farAreas.length) out.push({ icon: '🚗', title: `${lbl}: יום מעורב`, text: `משלב ${farAreas.join(', ')} עם אזור גדנסק, נסיעה ארוכה באמצע היום. עדיף לרכז את ${farAreas.join(', ')} ביום נפרד.` });
+    const res = stops.filter(p => p.tags.includes('להזמין מראש')); if (res.length) out.push({ icon: '📞', title: `${lbl}: להזמין מראש`, text: res.map(p => p.name).join(', ') });
+  });
+  return out;
+}
+function renderSummary() {
+  const el = $('#summaryView'); if (!el) return;
+  const am = assignedMap(), unplanned = P.filter(p => !am[p.id] && !p.deleted).length;
+  let km = 0, min = 0, ready = true; trip.days.forEach(d => { const r = dayRoute(d); if (r) { if (r.ready) { km += r.totalKm; min += r.totalMin; } else ready = false; } });
+  const rainy = trip.days.filter((d, i) => isRainy(dayWx(i))).length;
+  const tiles = [[trip.days.length, 'ימים'], [trip.days.reduce((a, d) => a + d.stops.length, 0), 'עצירות'], [unplanned, 'לא משובצים'], [min ? fmtLeg({ km, min }) : '—', 'נסיעה סה"כ' + (ready ? '' : ' (מחשב…)')], [rainy, 'ימי גשם צפויים']];
+  const first = dayDate(0), offset = first ? first.getDay() : 0;
+  const cells = []; for (let k = 0; k < offset; k++) cells.push('<div class="cal-cell pad"></div>');
+  trip.days.forEach((d, i) => {
+    const date = dayDate(i), wx = dayWx(i), st = dayStats(d), stops = d.stops.map(s => BYID[s.pid]).filter(Boolean);
+    const flags = []; if (isRainy(wx)) flags.push('🌧️'); if (date && date.getDay() === 0 && stops.some(p => shortOf(p) === 'קניות')) flags.push('🛍️'); if (st.n > 7 || (st.min && st.min > 150)) flags.push('⚠️'); if (stops.some(p => p.tags.includes('להזמין מראש'))) flags.push('📞');
+    const list = stops.slice(0, 6).map(p => `<li><i style="background:${LISTS[p.list].color}"></i>${esc(p.name)}</li>`).join('') + (stops.length > 6 ? `<li class="more">ועוד ${stops.length - 6}</li>` : '');
+    cells.push(`<div class="cal-cell ${stops.length ? '' : 'empty'} ${i === ui.activeDay ? 'active' : ''}" data-goday="${i}" role="button" tabindex="0"><div class="cal-head"><b>${date ? `${HE_SHORT[date.getDay()]} ${date.getDate()}.${date.getMonth() + 1}` : 'יום ' + (i + 1)}</b>${wx ? `<span class="wx"><span class="ico">${WX_ICON(wx.code)}</span>${wx.max}°/${wx.min}°</span>` : ''}</div>${d.title ? `<div class="cal-title">${esc(d.title)}</div>` : ''}<div class="cal-meta">${st.n ? `${st.n} עצירות${st.min ? ' · ' + fmtLeg({ km: st.km, min: st.min }) : ''}` : 'ריק'} ${flags.join(' ')}</div><ul class="cal-stops">${list}</ul></div>`);
+  });
+  const ins = buildInsights();
+  el.innerHTML = `<div class="sum-wrap">
+    <div class="sum-stats">${tiles.map(([v, l]) => `<div class="stat"><b>${v}</b><span>${l}</span></div>`).join('')}</div>
+    <h2 class="sum-h">לוח הטיול</h2><div class="cal-week">${HE_DAYS.map(n => `<span>${n}</span>`).join('')}</div><div class="cal">${cells.join('')}</div>
+    <div class="hint">לחיצה על יום פותחת אותו בתכנון. בתכנון אפשר לגרור יום שלם (הידית ⋮⋮ בכותרת) ולהחליף אותו עם יום אחר.</div>
+    <h2 class="sum-h">תובנות והצעות</h2>
+    <div class="insights">${ins.length ? ins.map(x => `<div class="ins"><div class="ins-ico">${x.icon}</div><div><b>${esc(x.title)}</b><div class="ins-t">${esc(x.text)}</div>${x.actions && x.actions.length ? `<div class="ins-a">${x.actions.map(a => `<button class="chip" type="button" data-suggest="${a.pid}|${a.day}">+ ${esc(a.label)}</button>`).join('')}</div>` : ''}</div></div>`).join('') : '<div class="hint">אין הערות. התכנון נראה טוב.</div>'}</div>
+  </div>`;
+}
 let toastT; function toast(t) { let el = $('.toast'); if (!el) { el = document.createElement('div'); el.className = 'toast'; document.body.appendChild(el); } el.textContent = t; clearTimeout(toastT); toastT = setTimeout(() => el.remove(), 1800); }
 
 // ---------- events ----------
@@ -632,10 +771,15 @@ document.addEventListener('click', e => {
   if (t.id === 'jumpPool') { setPoolCollapsed(false); $('.pool').scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
   if (t.id === 'jumpDays') { $('#side').scrollTo({ top: 0, behavior: 'smooth' }); return; }
   if (t.id === 'tabPool') { setView('pool'); return; }
+  if (t.id === 'tabSummary') { setView('summary'); return; }
+  const cell = t.closest('[data-goday]');
+  if (cell && !t.closest('button')) { const i = +cell.dataset.goday; ui.activeDay = i; ui.collapsed.delete(trip.days[i].id); saveUi(); setView('plan'); render(); document.querySelector(`[data-day="${i}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
+  if (t.dataset.suggest) { const [pid, di] = t.dataset.suggest.split('|'); addTo(+di, pid); renderSummary(); return; }
   if (t.id === 'gsearch') { const q = $('#gq').value.trim(); if (q) { setPoolCollapsed(false); searchPlaces(q); } return; }
   if (t.dataset.gadd !== undefined) { const sel = t.closest('.gitem')?.querySelector('[data-gcat]'); addCustom(gResults[+t.dataset.gadd], sel ? sel.value : ''); return; }
   if (t.dataset.gforce !== undefined) { const r = gResults[+t.dataset.gforce]; const w = t.closest('.gadd'); w.innerHTML = `<select data-gcat="${t.dataset.gforce}" title="קטגוריה">${catOptions(guessList(r))}</select><button class="btn small primary" type="button" data-gadd="${t.dataset.gforce}">הוסף</button>`; return; }
   if (t.dataset.merge) { const [dupId, intoId] = t.dataset.merge.split('|'); mergeCustom(dupId, intoId); return; }
+  if (t.dataset.restore) { restorePlace(t.dataset.restore); return; }
   if (t.id === 'gclear' || t.id === 'gclear2') { $('#gres').innerHTML = ''; return; }
   if (t.id === 'poolToggle' || t.closest('#poolTitle')) { setPoolCollapsed(!ui.poolCollapsed); return; }
   if (t.dataset.rmcustom) { trip.custom = (trip.custom || []).filter(c => c.id !== t.dataset.rmcustom); commit(); toast('הוסר מהמאגר'); return; }
