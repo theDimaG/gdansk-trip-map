@@ -125,9 +125,17 @@ def to_markdown(plan, places):
     if packing:
         done = sum(1 for x in packing if x.get("done"))
         lines.append("## רשימת ציוד (%d/%d נלקחו)" % (done, len(packing)))
+        cats = []
         for x in packing:
-            lines.append("- [%s] %s" % ("x" if x.get("done") else " ", x.get("text", "")))
-        lines.append("")
+            c = x.get("cat") or "אחר"
+            if c not in cats:
+                cats.append(c)
+        for c in cats:
+            lines.append("### " + c)
+            for x in packing:
+                if (x.get("cat") or "אחר") == c:
+                    lines.append("- [%s] %s" % ("x" if x.get("done") else " ", x.get("text", "")))
+            lines.append("")
     return "\n".join(lines)
 
 
