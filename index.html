@@ -178,6 +178,8 @@ label.f > *{font-size:14px;color:var(--ink)}
 .sortable-drag{box-shadow:var(--shadow)}
 .daytotal{font-size:12px;color:var(--ink-2);display:flex;gap:12px;flex-wrap:wrap}
 .daynote textarea{font-size:13px}
+.modes{display:inline-flex;gap:4px;flex-wrap:wrap}
+.modes .chip{padding:3px 8px;font-size:12px}
 
 /* pool */
 .pool .filters{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
@@ -238,7 +240,7 @@ label.f > *{font-size:14px;color:var(--ink)}
       <div class="settings">
         <label class="f">תאריך הגעה<input type="date" id="sStart"></label>
         <label class="f">לילות<input type="number" id="sNights" min="1" max="21"></label>
-        <label class="f">התניידות<select id="sMode"><option value="DRIVING">רכב</option><option value="WALKING">הליכה</option><option value="TRANSIT">תחב"צ</option></select></label>
+        <label class="f">התניידות (ברירת מחדל)<select id="sMode"><option value="DRIVING">רכב</option><option value="WALKING">הליכה</option><option value="TRANSIT">תחב"צ</option></select></label>
         <div class="hotel">
           <b>לינה:</b> <span id="hotelName">לא הוגדר</span>
           <button class="btn small" id="setHotel">סמן על המפה</button>
@@ -373,7 +375,7 @@ function normalize(t) {
   const s = Object.assign({ start: '', nights: 7, mode: 'DRIVING', hotel: null }, t.settings || {});
   const custom = (t.custom || []).filter(c => c && c.id && typeof c.lat === 'number' && typeof c.lng === 'number' && c.name).map(c => ({ id: String(c.id), name: c.name, lat: c.lat, lng: c.lng, note: c.note || '', area: c.area || '', uri: c.uri || '', list: c.list || '' }));
   const known = new Set(custom.map(c => c.id));
-  const days = (t.days || []).map(d => ({ id: d.id || uid(), title: d.title || '', note: d.note || '', stops: (d.stops || []).filter(x => BASE_BYID[x.pid] || known.has(x.pid)).map(x => ({ pid: x.pid, note: x.note || '' })) }));
+  const days = (t.days || []).map(d => ({ id: d.id || uid(), title: d.title || '', note: d.note || '', mode: ['DRIVING', 'WALKING', 'TRANSIT'].includes(d.mode) ? d.mode : '', stops: (d.stops || []).filter(x => BASE_BYID[x.pid] || known.has(x.pid)).map(x => ({ pid: x.pid, note: x.note || '' })) }));
   const deleted = [...new Set((t.deleted || []).map(String))];
   return { settings: s, days, custom, deleted };
 }
@@ -413,8 +415,10 @@ function dayPoints(day) {
   const h = trip.settings.hotel; const pts = day.stops.map(s => BYID[s.pid]).filter(Boolean);
   return h && pts.length ? [h, ...pts, h] : pts;
 }
-const legKey = (a, b) => `${trip.settings.mode}|${a.lat},${a.lng}|${b.lat},${b.lng}`;
-function dayLegs(day) { const pts = dayPoints(day); const out = []; for (let i = 1; i < pts.length; i++) out.push(LEGS[legKey(pts[i-1], pts[i])] || null); return out; }
+const MODES = { DRIVING: { icon: '🚗', label: 'רכב' }, WALKING: { icon: '🚶', label: 'הליכה' }, TRANSIT: { icon: '🚌', label: 'תחב"צ' } };
+const dayMode = day => (day && day.mode) || trip.settings.mode || 'DRIVING';
+const legKey = (a, b, mode) => `${mode || trip.settings.mode}|${a.lat},${a.lng}|${b.lat},${b.lng}`;
+function dayLegs(day) { const pts = dayPoints(day), m = dayMode(day); const out = []; for (let i = 1; i < pts.length; i++) out.push(LEGS[legKey(pts[i-1], pts[i], m)] || null); return out; }
 function dayRoute(day) { // {legs, totalKm, totalMin, ready, error}
   const legs = dayLegs(day); if (!legs.length) return null;
   const ready = legs.every(l => l && l.km !== undefined);
@@ -425,10 +429,10 @@ function fetchRoute(day) {
   if (!routesLib) return;
   const pts = dayPoints(day);
   for (let i = 1; i < pts.length; i++) {
-    const a = pts[i-1], b = pts[i], key = legKey(a, b);
+    const a = pts[i-1], b = pts[i], mode = dayMode(day), key = legKey(a, b, mode);
     if (LEGS[key]) continue;
     LEGS[key] = { pending: true };
-    routesLib.Route.computeRoutes({ origin: { lat: a.lat, lng: a.lng }, destination: { lat: b.lat, lng: b.lng }, travelMode: trip.settings.mode,
+    routesLib.Route.computeRoutes({ origin: { lat: a.lat, lng: a.lng }, destination: { lat: b.lat, lng: b.lng }, travelMode: mode,
       fields: ['path', 'legs', 'durationMillis', 'distanceMeters'], language: 'he' })
       .then(({ routes }) => {
         const r = routes && routes[0]; if (!r) throw new Error('NO_ROUTE');
@@ -473,12 +477,13 @@ function renderDays() {
       <div class="dayhead" data-toggle="${i}">
         <button class="dayhandle" type="button" title="גרור כדי להחליף עם יום אחר">⋮⋮</button>
         <span class="num">${dayLabel(i)}</span>
-        <div class="t"><b>${esc(d.title) || (date ? `יום ${i+1} בטיול` : 'ללא תאריך')}</b><span>${d.stops.length ? d.stops.length + ' עצירות' : 'ריק'}${extra ? ' · מחוץ לטווח הלילות' : ''}${r && r.ready ? ' · ' + fmtLeg({ km: r.totalKm, min: r.totalMin }) : ''}</span>${ui.collapsed.has(d.id) && d.stops.length ? `<span class="mini">${d.stops.map(s => esc(BYID[s.pid].name)).join(' ← ')}</span>` : ''}</div>
+        <div class="t"><b>${esc(d.title) || (date ? `יום ${i+1} בטיול` : 'ללא תאריך')}</b><span>${d.stops.length ? d.stops.length + ' עצירות' : 'ריק'}${extra ? ' · מחוץ לטווח הלילות' : ''}${r && r.ready ? ' · ' + MODES[dayMode(d)].icon + ' ' + fmtLeg({ km: r.totalKm, min: r.totalMin }) : ''}</span>${ui.collapsed.has(d.id) && d.stops.length ? `<span class="mini">${d.stops.map(s => esc(BYID[s.pid].name)).join(' ← ')}</span>` : ''}</div>
         ${wx ? `<span class="wx"><span class="ico">${WX_ICON(wx.code)}</span><span>${wx.max}°/${wx.min}°</span>${wx.rain >= 30 ? `<span class="rain">☂ ${wx.rain}%</span>` : ''}</span>` : ''}
         <button class="btn icon" data-collapse="${d.id}" title="כווץ/פתח">${ui.collapsed.has(d.id) ? '▸' : '▾'}</button>
       </div>
       <div class="daybody">
-        <input type="text" placeholder="כותרת ליום (למשל: יום סופוט)" value="${esc(d.title)}" data-title="${i}" style="font-size:13px">
+        <div class="row" style="gap:6px"><input type="text" placeholder="כותרת ליום (למשל: יום סופוט)" value="${esc(d.title)}" data-title="${i}" style="font-size:13px;flex:1;min-width:140px">
+          <span class="modes" title="התניידות ביום הזה">${Object.entries(MODES).map(([k, m]) => `<button type="button" class="chip ${dayMode(d) === k ? 'on' : ''}" data-daymode="${i}|${k}">${m.icon} ${m.label}</button>`).join('')}</span></div>
         <div class="stops ${d.stops.length ? '' : 'empty'}" data-stops="${i}">${d.stops.length ? stops : 'גרור לכאן מקומות מהמאגר, או בחר יום ברשימת המאגר'}</div>
         ${back}${total}
         <div class="daynote"><textarea placeholder="הערות ליום" data-daynote="${i}">${esc(d.note)}</textarea></div>
@@ -661,24 +666,27 @@ function renderMap() {
   const am = assignedMap();
   const showDay = ui.mapDay === 'all' ? null : trip.days[ui.activeDay];
   const inDay = {}; if (showDay) showDay.stops.forEach((s, j) => inDay[s.pid] = j + 1);
-  P.forEach(p => { const m = markers[p.id]; const lbl = inDay[p.id]; m.setVisible(!p.deleted); m.setIcon(pin(LISTS[p.list].color, lbl)); m.setZIndex(lbl ? 500 : (am[p.id] ? 2 : 1)); m.setOpacity(showDay && !lbl ? (am[p.id] ? .35 : .75) : 1); });
+  const showDel = ui.poolLists.has('deleted');
+  const visibleOnMap = p => showDel ? p.deleted : (!p.deleted && (!ui.poolLists.size || ui.poolLists.has(p.list) || !!inDay[p.id]));
+  P.forEach(p => { const m = markers[p.id]; const lbl = inDay[p.id]; m.setVisible(visibleOnMap(p)); m.setIcon(pin(LISTS[p.list].color, lbl)); m.setZIndex(lbl ? 500 : (am[p.id] ? 2 : 1)); m.setOpacity(showDay && !lbl ? (am[p.id] ? .35 : .75) : 1); });
   const h = trip.settings.hotel;
   if (h) { if (!hotelMarker) { hotelMarker = new google.maps.Marker({ map, zIndex: 600 }); hotelMarker.addListener('click', () => { iw.setContent(`<div class="iw"><b>🏨 ${esc(h.name)}</b></div>`); iw.open({ map, anchor: hotelMarker }); }); }
     hotelMarker.setPosition({ lat: h.lat, lng: h.lng }); hotelMarker.setTitle(h.name); hotelMarker.setIcon({ url: 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 34 34"><rect x="4" y="4" width="26" height="26" rx="7" fill="#172230" stroke="#fff" stroke-width="3"/><text x="17" y="23" text-anchor="middle" font-size="16">🏨</text></svg>'), scaledSize: new google.maps.Size(34, 34), anchor: new google.maps.Point(17, 17) }); }
   else if (hotelMarker) { hotelMarker.setMap(null); hotelMarker = null; }
   const legs = showDay ? dayLegs(showDay).filter(l => l && l.route) : [];
-  const lk = legs.map(l => l.route).map((_, i) => legKey(dayPoints(showDay)[i], dayPoints(showDay)[i+1])).join('>');
+  const lk = legs.map(l => l.route).map((_, i) => legKey(dayPoints(showDay)[i], dayPoints(showDay)[i+1], dayMode(showDay))).join('>');
   if (lk !== routeLinesKey) {
     routeLines.forEach(l => l.setMap(null)); routeLines = []; routeLinesKey = lk;
     legs.forEach(l => { try { const ls = l.route.createPolylines({ polylineOptions: { strokeColor: '#D99A2B', strokeWeight: 5, strokeOpacity: .85 } }); ls.forEach(pl => { pl.setMap(map); routeLines.push(pl); }); } catch (e) { console.warn('polyline', e); } });
   }
-  $('#mapbar').innerHTML = `<button class="chip ${ui.mapDay !== 'all' ? 'on' : ''}" data-mapday="active">${showDay ? dayLabel(ui.activeDay) : 'יום נבחר'}</button><button class="chip ${ui.mapDay === 'all' ? 'on' : ''}" data-mapday="all">כל המקומות</button><button class="chip" id="fitBtn">התאם למסך</button>`;
+  const filt = ui.poolLists.size ? `<button class="chip on" data-clearfilter="1" title="בטל סינון קטגוריה">✕ ${[...ui.poolLists].map(id => LISTS[id] ? LISTS[id].short : id).join(', ')}</button>` : '';
+  $('#mapbar').innerHTML = filt + `<button class="chip ${ui.mapDay !== 'all' ? 'on' : ''}" data-mapday="active">${showDay ? dayLabel(ui.activeDay) : 'יום נבחר'}</button><button class="chip ${ui.mapDay === 'all' ? 'on' : ''}" data-mapday="all">כל המקומות</button><button class="chip" id="fitBtn">התאם למסך</button>`;
   $('#legend').innerHTML = (LISTS.custom.n ? [...DATA.lists, LISTS.custom] : DATA.lists).map(l => `<span style="--c:${l.color}"><i></i>${l.short}</span>`).join('');
   document.getElementById('map').style.cursor = ui.pickingHotel ? 'crosshair' : '';
 }
 function fitDay() {
   const d = ui.mapDay === 'all' ? null : trip.days[ui.activeDay];
-  const pts = d && d.stops.length ? dayPoints(d) : P;
+  const pts = d && d.stops.length ? dayPoints(d) : P.filter(p => markers[p.id] && markers[p.id].getVisible());
   const b = new google.maps.LatLngBounds(); pts.forEach(p => b.extend({ lat: p.lat, lng: p.lng })); map.fitBounds(b, 60);
 }
 function focusPlace(id) { const p = BYID[id]; if (!p || !mapReady) return; map.panTo({ lat: p.lat, lng: p.lng }); if (map.getZoom() < 15) map.setZoom(16); openInfo(p); if (window.innerWidth < 860) setView('map'); }
@@ -724,6 +732,12 @@ function buildInsights() {
       const closed = stops.filter(p => /ראשון סגור/.test(p.note)); if (closed.length) out.push({ icon: '🚫', title: `${lbl}: סגור בימי ראשון`, text: `${closed.map(p => p.name).join(', ')}. להעביר ליום אחר.` });
     }
     const st = dayStats(d);
+    if (stops.length >= 2) {
+      const legsKm = []; for (let k = 1; k < stops.length; k++) legsKm.push(kmBetween(stops[k-1].lat, stops[k-1].lng, stops[k].lat, stops[k].lng));
+      const longest = Math.max(...legsKm), mode = dayMode(d);
+      if (mode !== 'WALKING' && longest < 2.2 && legsKm.reduce((a, b) => a + b, 0) < 8) out.push({ icon: '🚶', title: `${lbl}: נראה כיום הליכה`, text: `כל העצירות במרחק של עד ${longest.toFixed(1)} ק"מ זו מזו, אבל הזמנים מחושבים לפי ${MODES[mode].label}. לעבור להליכה?`, modeAction: { day: i, mode: 'WALKING' } });
+      if (mode === 'WALKING' && longest > 4) out.push({ icon: '🚗', title: `${lbl}: קטע הליכה ארוך`, text: `יש קטע של ${longest.toFixed(1)} ק"מ בקו אווירי. אולי רכב או תחב"צ ליום הזה?`, modeAction: { day: i, mode: 'DRIVING' } });
+    }
     if (st.n > 7 || (st.min && st.min > 150)) out.push({ icon: '⚠️', title: `${lbl}: יום עמוס`, text: `${st.n} עצירות${st.min ? ` ו-${fmtLeg({ km: st.km, min: st.min })} נסיעה` : ''}. שקול להוריד עצירה או לפצל.` });
     if (stops.length >= 3 && !stops.some(p => shortOf(p) === 'אוכל')) {
       const c = centroid(stops);
@@ -748,7 +762,7 @@ function renderSummary() {
     const date = dayDate(i), wx = dayWx(i), st = dayStats(d), stops = d.stops.map(s => BYID[s.pid]).filter(Boolean);
     const flags = []; if (isRainy(wx)) flags.push('🌧️'); if (date && date.getDay() === 0 && stops.some(p => shortOf(p) === 'קניות')) flags.push('🛍️'); if (st.n > 7 || (st.min && st.min > 150)) flags.push('⚠️'); if (stops.some(p => p.tags.includes('להזמין מראש'))) flags.push('📞');
     const list = stops.slice(0, 6).map(p => `<li><i style="background:${LISTS[p.list].color}"></i>${esc(p.name)}</li>`).join('') + (stops.length > 6 ? `<li class="more">ועוד ${stops.length - 6}</li>` : '');
-    cells.push(`<div class="cal-cell ${stops.length ? '' : 'empty'} ${i === ui.activeDay ? 'active' : ''}" data-goday="${i}" role="button" tabindex="0"><div class="cal-head"><b>${date ? `${HE_SHORT[date.getDay()]} ${date.getDate()}.${date.getMonth() + 1}` : 'יום ' + (i + 1)}</b>${wx ? `<span class="wx"><span class="ico">${WX_ICON(wx.code)}</span>${wx.max}°/${wx.min}°</span>` : ''}</div>${d.title ? `<div class="cal-title">${esc(d.title)}</div>` : ''}<div class="cal-meta">${st.n ? `${st.n} עצירות${st.min ? ' · ' + fmtLeg({ km: st.km, min: st.min }) : ''}` : 'ריק'} ${flags.join(' ')}</div><ul class="cal-stops">${list}</ul></div>`);
+    cells.push(`<div class="cal-cell ${stops.length ? '' : 'empty'} ${i === ui.activeDay ? 'active' : ''}" data-goday="${i}" role="button" tabindex="0"><div class="cal-head"><b>${date ? `${HE_SHORT[date.getDay()]} ${date.getDate()}.${date.getMonth() + 1}` : 'יום ' + (i + 1)}</b>${wx ? `<span class="wx"><span class="ico">${WX_ICON(wx.code)}</span>${wx.max}°/${wx.min}°</span>` : ''}</div>${d.title ? `<div class="cal-title">${esc(d.title)}</div>` : ''}<div class="cal-meta">${st.n ? `${st.n} עצירות${st.min ? ' · ' + MODES[dayMode(d)].icon + ' ' + fmtLeg({ km: st.km, min: st.min }) : ''}` : 'ריק'} ${flags.join(' ')}</div><ul class="cal-stops">${list}</ul></div>`);
   });
   const ins = buildInsights();
   el.innerHTML = `<div class="sum-wrap">
@@ -756,7 +770,7 @@ function renderSummary() {
     <h2 class="sum-h">לוח הטיול</h2><div class="cal-week">${HE_DAYS.map(n => `<span>${n}</span>`).join('')}</div><div class="cal">${cells.join('')}</div>
     <div class="hint">לחיצה על יום פותחת אותו בתכנון. בתכנון אפשר לגרור יום שלם (הידית ⋮⋮ בכותרת) ולהחליף אותו עם יום אחר.</div>
     <h2 class="sum-h">תובנות והצעות</h2>
-    <div class="insights">${ins.length ? ins.map(x => `<div class="ins"><div class="ins-ico">${x.icon}</div><div><b>${esc(x.title)}</b><div class="ins-t">${esc(x.text)}</div>${x.actions && x.actions.length ? `<div class="ins-a">${x.actions.map(a => `<button class="chip" type="button" data-suggest="${a.pid}|${a.day}">+ ${esc(a.label)}</button>`).join('')}</div>` : ''}</div></div>`).join('') : '<div class="hint">אין הערות. התכנון נראה טוב.</div>'}</div>
+    <div class="insights">${ins.length ? ins.map(x => `<div class="ins"><div class="ins-ico">${x.icon}</div><div><b>${esc(x.title)}</b><div class="ins-t">${esc(x.text)}</div>${x.actions && x.actions.length ? `<div class="ins-a">${x.actions.map(a => `<button class="chip" type="button" data-suggest="${a.pid}|${a.day}">+ ${esc(a.label)}</button>`).join('')}</div>` : ''}${x.modeAction ? `<div class="ins-a"><button class="chip" type="button" data-daymode="${x.modeAction.day}|${x.modeAction.mode}">${MODES[x.modeAction.mode].icon} החלף ל${MODES[x.modeAction.mode].label}</button></div>` : ''}</div></div>`).join('') : '<div class="hint">אין הערות. התכנון נראה טוב.</div>'}</div>
   </div>`;
 }
 let toastT; function toast(t) { let el = $('.toast'); if (!el) { el = document.createElement('div'); el.className = 'toast'; document.body.appendChild(el); } el.textContent = t; clearTimeout(toastT); toastT = setTimeout(() => el.remove(), 1800); }
@@ -775,6 +789,7 @@ document.addEventListener('click', e => {
   const cell = t.closest('[data-goday]');
   if (cell && !t.closest('button')) { const i = +cell.dataset.goday; ui.activeDay = i; ui.collapsed.delete(trip.days[i].id); saveUi(); setView('plan'); render(); document.querySelector(`[data-day="${i}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
   if (t.dataset.suggest) { const [pid, di] = t.dataset.suggest.split('|'); addTo(+di, pid); renderSummary(); return; }
+  if (t.dataset.daymode) { const [di, mode] = t.dataset.daymode.split('|'); trip.days[+di].mode = mode; commit(); if ($('#app').dataset.view === 'summary') renderSummary(); toast(`${dayLabel(+di)}: ${MODES[mode].icon} ${MODES[mode].label}`); return; }
   if (t.id === 'gsearch') { const q = $('#gq').value.trim(); if (q) { setPoolCollapsed(false); searchPlaces(q); } return; }
   if (t.dataset.gadd !== undefined) { const sel = t.closest('.gitem')?.querySelector('[data-gcat]'); addCustom(gResults[+t.dataset.gadd], sel ? sel.value : ''); return; }
   if (t.dataset.gforce !== undefined) { const r = gResults[+t.dataset.gforce]; const w = t.closest('.gadd'); w.innerHTML = `<select data-gcat="${t.dataset.gforce}" title="קטגוריה">${catOptions(guessList(r))}</select><button class="btn small primary" type="button" data-gadd="${t.dataset.gforce}">הוסף</button>`; return; }
@@ -787,9 +802,10 @@ document.addEventListener('click', e => {
   if (t.dataset.deleteday) { trip.days.splice(+t.dataset.deleteday, 1); commit(); return; }
   if (t.id === 'addDay') { trip.days.push({ id: uid(), title: '', note: '', stops: [] }); commit(); return; }
   if (t.dataset.focus) { focusPlace(t.dataset.focus); return; }
-  if (t.dataset.pl) { const id = t.dataset.pl; ui.poolLists.has(id) ? ui.poolLists.delete(id) : ui.poolLists.add(id); renderPool(); return; }
+  if (t.dataset.pl) { const id = t.dataset.pl; if (id === 'deleted') { ui.poolLists.has(id) ? ui.poolLists.delete(id) : (ui.poolLists.clear(), ui.poolLists.add(id)); } else { ui.poolLists.delete('deleted'); ui.poolLists.has(id) ? ui.poolLists.delete(id) : ui.poolLists.add(id); } renderPool(); renderMap(); return; }
   if (t.id === 'poolHide') { ui.poolHide = !ui.poolHide; renderPool(); return; }
   if (t.dataset.mapday) { ui.mapDay = t.dataset.mapday; renderMap(); return; }
+  if (t.dataset.clearfilter) { ui.poolLists.clear(); renderPool(); renderMap(); return; }
   if (t.id === 'fitBtn') { fitDay(); return; }
   if (t.id === 'setHotel') { ui.pickingHotel = !ui.pickingHotel; renderSettings(); renderMap(); if (ui.pickingHotel) { toast('לחץ על המפה במיקום המלון'); if (window.innerWidth < 860) setView('map'); } return; }
   if (t.id === 'clearHotel') { trip.settings.hotel = null; commit(); return; }
