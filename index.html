@@ -57,8 +57,18 @@ a{color:var(--amber-ink)}
   .tabs{display:flex}
   .side{border:0}
   .app[data-view="map"] .side{display:none}
-  .app[data-view="plan"] .mapwrap{display:none}
+  .app[data-view="plan"] .mapwrap,.app[data-view="pool"] .mapwrap{display:none}
+  .app[data-view="plan"] .pool{display:none}
+  .app[data-view="pool"] .settings-card,.app[data-view="pool"] .daysbar,.app[data-view="pool"] #days{display:none}
+  .app[data-view="pool"] .pitems{max-height:none}
+  .desk{display:none!important}
 }
+.daysbar{position:sticky;top:0;z-index:3;background:var(--bg);padding:6px 0 8px;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.daysbar .hint{margin-inline-start:auto}
+.dayhead .t .mini{display:block;font-size:12px;color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dayhead.dropping{outline:2px dashed var(--amber);outline-offset:-2px}
+.pool .ph{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.pool .ph h2{flex:1}
 
 .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px}
 .chip{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:4px 11px;font-size:13px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
@@ -144,12 +154,12 @@ label.f > *{font-size:14px;color:var(--ink)}
     <h1>מתכנן הטיול לגדנסק</h1>
     <span class="sync" id="sync"><i></i><span>מתחבר…</span></span>
     <span class="spacer"></span>
-    <div class="tabs"><button id="tabPlan" class="on">תכנון</button><button id="tabMap">מפה</button></div>
+    <div class="tabs"><button id="tabPlan" class="on">תכנון</button><button id="tabPool">מקומות</button><button id="tabMap">מפה</button></div>
     <a class="btn small" href="places.html">כל המקומות ↗</a>
   </div>
 
   <aside class="side" id="side">
-    <section class="card">
+    <section class="card settings-card">
       <div class="settings">
         <label class="f">תאריך הגעה<input type="date" id="sStart"></label>
         <label class="f">לילות<input type="number" id="sNights" min="1" max="21"></label>
@@ -163,10 +173,16 @@ label.f > *{font-size:14px;color:var(--ink)}
       </div>
     </section>
 
+    <div class="daysbar" id="daysbar">
+      <button class="btn small" id="collapseAll">כווץ הכול</button>
+      <button class="btn small" id="expandAll">פתח הכול</button>
+      <button class="btn small desk" id="jumpPool">למאגר המקומות ↓</button>
+      <span class="hint" id="daysHint"></span>
+    </div>
     <div id="days"></div>
 
     <section class="card pool">
-      <h2 style="font-size:16px;margin-bottom:8px">מאגר המקומות <span class="hint" id="poolCount"></span></h2>
+      <div class="ph"><h2 style="font-size:16px">מאגר המקומות <span class="hint" id="poolCount"></span></h2><button class="btn small desk" id="jumpDays">לימים ↑</button></div>
       <div class="filters" id="poolLists"></div>
       <input type="search" id="poolQ" placeholder="חיפוש בשם או בהערה">
       <div class="filters" id="poolMore"></div>
@@ -200,6 +216,8 @@ const uid = () => Math.random().toString(36).slice(2, 9);
 // ---------- state ----------
 let trip = { settings: { start: '', nights: 7, mode: 'DRIVING', hotel: null }, days: [] };
 let ui = { activeDay: null, poolLists: new Set(), poolQ: '', poolHide: true, collapsed: new Set(), pickingHotel: false, mapDay: 'active' };
+try { const u = JSON.parse(localStorage.getItem('ui:' + TRIP_ID) || 'null'); if (u && Array.isArray(u.collapsed)) ui.collapsed = new Set(u.collapsed); } catch (e) {}
+function saveUi() { try { localStorage.setItem('ui:' + TRIP_ID, JSON.stringify({ collapsed: [...ui.collapsed] })); } catch (e) {} }
 let remoteReady = false;
 
 function ensureDays() {
@@ -329,7 +347,7 @@ function renderDays() {
     return `<section class="card day ${i === ui.activeDay ? 'active' : ''} ${ui.collapsed.has(d.id) ? 'collapsed' : ''}" data-day="${i}">
       <div class="dayhead" data-toggle="${i}">
         <span class="num">יום ${i+1}</span>
-        <div class="t"><b>${esc(d.title) || fmtDate(date) || 'ללא תאריך'}</b><span>${d.title && date ? fmtDate(date) + ' · ' : ''}${d.stops.length ? d.stops.length + ' עצירות' : 'ריק'}${extra ? ' · מחוץ לטווח הלילות' : ''}</span></div>
+        <div class="t"><b>${esc(d.title) || fmtDate(date) || 'ללא תאריך'}</b><span>${d.title && date ? fmtDate(date) + ' · ' : ''}${d.stops.length ? d.stops.length + ' עצירות' : 'ריק'}${extra ? ' · מחוץ לטווח הלילות' : ''}${r && r.ready ? ' · ' + fmtLeg({ km: r.totalKm, min: r.totalMin }) : ''}</span>${ui.collapsed.has(d.id) && d.stops.length ? `<span class="mini">${d.stops.map(s => esc(BYID[s.pid].name)).join(' ← ')}</span>` : ''}</div>
         ${wx ? `<span class="wx"><span class="ico">${WX_ICON(wx.code)}</span><span>${wx.max}°/${wx.min}°</span>${wx.rain >= 30 ? `<span class="rain">☂ ${wx.rain}%</span>` : ''}</span>` : ''}
         <button class="btn icon" data-collapse="${d.id}" title="כווץ/פתח">${ui.collapsed.has(d.id) ? '▸' : '▾'}</button>
       </div>
@@ -343,6 +361,12 @@ function renderDays() {
     </section>`;
   }).join('') + `<button class="btn" id="addDay" style="width:100%">+ הוסף יום</button>`;
   document.querySelectorAll('[data-stops]').forEach(el => new Sortable(el, { group: 'stops', handle: '.handle', animation: 150, onEnd: onSort }));
+  const nStops = trip.days.reduce((a, d) => a + d.stops.length, 0);
+  $('#daysHint').textContent = `${trip.days.length} ימים · ${nStops} עצירות`;
+  // dragging something over a collapsed day opens it so it can be dropped into
+  document.querySelectorAll('.day.collapsed .dayhead').forEach(h => {
+    h.addEventListener('dragenter', () => { const day = h.closest('.day'); const id = trip.days[+day.dataset.day].id; ui.collapsed.delete(id); saveUi(); day.classList.remove('collapsed'); h.querySelector('.mini')?.remove(); });
+  });
   trip.days.forEach(d => fetchRoute(d));
 }
 function onSort(e) {
@@ -401,7 +425,7 @@ function openInfo(p) {
   iw.open({ map, anchor: markers[p.id] });
   google.maps.event.addListenerOnce(iw, 'domready', () => { const s = document.getElementById('iwDay'); if (s) s.onchange = () => { if (s.value !== '') { addTo(+s.value, p.id); iw.close(); } }; });
 }
-function addTo(di, pid) { trip.days[di].stops.push({ pid, note: '' }); ui.activeDay = di; commit(); toast(`נוסף ליום ${di+1}`); }
+function addTo(di, pid) { trip.days[di].stops.push({ pid, note: '' }); ui.activeDay = di; ui.collapsed.delete(trip.days[di].id); saveUi(); commit(); toast(`נוסף ליום ${di+1}`); }
 function renderMap() {
   if (!mapReady) return;
   const am = assignedMap();
@@ -428,14 +452,19 @@ function fitDay() {
   const b = new google.maps.LatLngBounds(); pts.forEach(p => b.extend({ lat: p.lat, lng: p.lng })); map.fitBounds(b, 60);
 }
 function focusPlace(id) { const p = BYID[id]; if (!p || !mapReady) return; map.panTo({ lat: p.lat, lng: p.lng }); if (map.getZoom() < 15) map.setZoom(16); openInfo(p); if (window.innerWidth < 860) setView('map'); }
-function setView(v) { $('#app').dataset.view = v; $('#tabPlan').classList.toggle('on', v === 'plan'); $('#tabMap').classList.toggle('on', v === 'map'); if (v === 'map' && mapReady) google.maps.event.trigger(map, 'resize'); }
+function setView(v) { $('#app').dataset.view = v; $('#tabPlan').classList.toggle('on', v === 'plan'); $('#tabPool').classList.toggle('on', v === 'pool'); $('#tabMap').classList.toggle('on', v === 'map'); if (v === 'map' && mapReady) google.maps.event.trigger(map, 'resize'); }
 let toastT; function toast(t) { let el = $('.toast'); if (!el) { el = document.createElement('div'); el.className = 'toast'; document.body.appendChild(el); } el.textContent = t; clearTimeout(toastT); toastT = setTimeout(() => el.remove(), 1800); }
 
 // ---------- events ----------
 document.addEventListener('click', e => {
   const t = e.target;
-  const d = t.closest('[data-toggle]'); if (d && !t.closest('button')) { ui.activeDay = +d.dataset.toggle; renderDays(); renderMap(); return; }
-  if (t.dataset.collapse) { const id = t.dataset.collapse; ui.collapsed.has(id) ? ui.collapsed.delete(id) : ui.collapsed.add(id); renderDays(); return; }
+  const d = t.closest('[data-toggle]'); if (d && !t.closest('button')) { const i = +d.dataset.toggle, id = trip.days[i].id; ui.activeDay = i; ui.collapsed.has(id) ? ui.collapsed.delete(id) : ui.collapsed.add(id); saveUi(); renderDays(); renderMap(); return; }
+  if (t.dataset.collapse) { const id = t.dataset.collapse; ui.collapsed.has(id) ? ui.collapsed.delete(id) : ui.collapsed.add(id); saveUi(); renderDays(); return; }
+  if (t.id === 'collapseAll') { trip.days.forEach(d => ui.collapsed.add(d.id)); saveUi(); renderDays(); return; }
+  if (t.id === 'expandAll') { ui.collapsed.clear(); saveUi(); renderDays(); return; }
+  if (t.id === 'jumpPool') { $('.pool').scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
+  if (t.id === 'jumpDays') { $('#side').scrollTo({ top: 0, behavior: 'smooth' }); return; }
+  if (t.id === 'tabPool') { setView('pool'); return; }
   if (t.dataset.remove) { const [i, j] = t.dataset.remove.split(':').map(Number); trip.days[i].stops.splice(j, 1); commit(); return; }
   if (t.dataset.deleteday) { trip.days.splice(+t.dataset.deleteday, 1); commit(); return; }
   if (t.id === 'addDay') { trip.days.push({ id: uid(), title: '', note: '', stops: [] }); commit(); return; }
