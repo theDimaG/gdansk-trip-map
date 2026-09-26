@@ -93,6 +93,8 @@ footer{font-size:12px;color:var(--ink-3)}
 .iw .m{font-size:12px;color:#7B8894;margin-bottom:6px}
 .iw p{margin:0 0 8px;font-size:13px;line-height:1.45}
 .iw a{color:#8A5D0E;font-size:13px}
+.gm-style-iw button.gm-ui-hover-effect{color:#172230!important;opacity:.8!important}
+.gm-style-iw button.gm-ui-hover-effect > span{background-color:#172230!important}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
@@ -203,6 +205,7 @@ function initMap() {
     gestureHandling: 'greedy', clickableIcons: true,
   });
   iw = new google.maps.InfoWindow();
+  map.addListener('click', () => { iw.close(); state.sel = null; lastView = 'sel'; render(); });
   markers = P.map(p => {
     const m = new google.maps.Marker({ position: {lat:p.lat, lng:p.lng}, map, title: p.name, icon: pin(LISTS[p.list].color, false) });
     m.addListener('click', () => { state.sel = p.i; render(); });

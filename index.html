@@ -144,6 +144,14 @@ label.f > *{font-size:14px;color:var(--ink)}
 .iw .row{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
 .iw select,.iw button{font:inherit;font-size:12px;padding:3px 6px;border-radius:6px;border:1px solid #D3DAE1;background:#fff;color:#172230}
 .iw a{font-size:13px}
+.iw .close{margin-inline-start:auto;border:1px solid #D3DAE1;background:#fff;color:#172230;border-radius:6px;padding:3px 10px;font-size:12px}
+.gm-style-iw button.gm-ui-hover-effect{color:#172230!important;opacity:.8!important}
+.gm-style-iw button.gm-ui-hover-effect > span{background-color:#172230!important}
+.gm-style .gm-style-iw-c,.gm-style .gm-style-iw-d{color:#172230}
+@media (max-width:860px){
+  .mapbar{top:auto;bottom:24px;left:10px;right:10px}
+  .legend{display:none}
+}
 .toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--surface);padding:8px 14px;border-radius:8px;font-size:13px;z-index:9;box-shadow:var(--shadow)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
@@ -409,7 +417,7 @@ function initMap() {
   iw = new google.maps.InfoWindow();
   google.maps.importLibrary('routes').then(lib => { routesLib = lib; renderDays(); }).catch(e => console.warn('routes lib', e));
   P.forEach(p => { const m = new google.maps.Marker({ position: { lat: p.lat, lng: p.lng }, map, title: p.name, icon: pin(LISTS[p.list].color) }); m.addListener('click', () => openInfo(p)); markers[p.id] = m; });
-  map.addListener('click', e => { if (ui.pickingHotel) { pickHotel(e.latLng); } });
+  map.addListener('click', e => { if (ui.pickingHotel) { pickHotel(e.latLng); } else { iw.close(); } });
   mapReady = true; renderMap();
 }
 window.initMap = initMap;
@@ -421,9 +429,9 @@ function openInfo(p) {
   const am = assignedMap();
   const dayOpts = trip.days.map((d, i) => `<option value="${i}">יום ${i+1}${d.title ? ' · ' + esc(d.title) : ''}</option>`).join('');
   iw.setContent(`<div class="iw"><b>${esc(p.name)}</b><div class="m">${LISTS[p.list].short} · ${p.area}${am[p.id] ? ' · בתכנון: יום ' + am[p.id].map(i=>i+1).join(', ') : ''}</div>${p.note ? `<p>${esc(p.note)}</p>` : ''}
-    <div class="row"><select id="iwDay"><option value="">הוסף ליום…</option>${dayOpts}</select><a href="${mapsUrl(p)}" target="_blank" rel="noopener">גוגל מפות ↗</a></div></div>`);
+    <div class="row"><select id="iwDay"><option value="">הוסף ליום…</option>${dayOpts}</select><a href="${mapsUrl(p)}" target="_blank" rel="noopener">גוגל מפות ↗</a><button class="close" id="iwClose" type="button">סגור</button></div></div>`);
   iw.open({ map, anchor: markers[p.id] });
-  google.maps.event.addListenerOnce(iw, 'domready', () => { const s = document.getElementById('iwDay'); if (s) s.onchange = () => { if (s.value !== '') { addTo(+s.value, p.id); iw.close(); } }; });
+  google.maps.event.addListenerOnce(iw, 'domready', () => { const s = document.getElementById('iwDay'); if (s) s.onchange = () => { if (s.value !== '') { addTo(+s.value, p.id); iw.close(); } }; const c = document.getElementById('iwClose'); if (c) c.onclick = () => iw.close(); });
 }
 function addTo(di, pid) { trip.days[di].stops.push({ pid, note: '' }); ui.activeDay = di; ui.collapsed.delete(trip.days[di].id); saveUi(); commit(); toast(`נוסף ליום ${di+1}`); }
 function renderMap() {
