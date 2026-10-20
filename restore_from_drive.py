@@ -11,7 +11,16 @@ import urllib.request
 
 PROJECT = "gdansk-trip-441f9"
 DOC = "trips/gdansk-2026"
-API_KEY = "AIzaSyDSiZ2iBLXrmH6Rj6XF-ZYTGN1dCf_StXA"
+import os
+def _load_key():
+    """Firebase web API key: read from local_config.json next to this script (not committed) or the FIREBASE_API_KEY env var."""
+    here = os.path.dirname(os.path.abspath(__file__))
+    try:
+        import json as _json
+        return _json.load(open(os.path.join(here, "local_config.json")))["firebase_api_key"]
+    except Exception:
+        return os.environ.get("FIREBASE_API_KEY", "")
+API_KEY = _load_key()
 
 
 def encode(v):
