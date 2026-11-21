@@ -169,7 +169,7 @@ def main():
             prev_digest = None
 
     if digest == prev_digest:
-        print("no change since last backup")
+        print("%s no change (plan updatedAt %s)" % (datetime.datetime.now().strftime("%Y-%m-%d %H:%M"), plan.get("updatedAt")))
         return
     stamp = datetime.datetime.now().strftime("%Y%m%d-%H%M")
     snap = os.path.join(DRIVE, "backups", "plan-%s.json" % stamp)
