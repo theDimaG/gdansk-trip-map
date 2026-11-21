@@ -122,6 +122,8 @@ def to_markdown(plan, places):
             lines.append(line)
             if p.get("note"):
                 lines.append("   - %s" % p["note"])
+            if (plan.get("placeNotes") or {}).get(str(st.get("pid"))):
+                lines.append("   - הערה שלי: %s" % plan["placeNotes"][str(st.get("pid"))])
             if st.get("note"):
                 lines.append("   - הערת תכנון: %s" % st["note"])
         lines.append("")
